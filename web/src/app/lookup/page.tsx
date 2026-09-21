@@ -1,19 +1,33 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import VerdictCard from "@/components/VerdictCard";
+import PlanChart from "@/components/PlanChart";
+import Sparkline from "@/components/Sparkline";
 import type { LookupResponse } from "@/lib/types";
 import { actionClass, inr, num } from "@/lib/format";
+import { enrichPlanFields } from "@/lib/plan";
+import {
+  plainAction,
+  plainBreakout,
+  plainPlanLines,
+  plainReason,
+  plainStructure,
+  plainVsDma,
+} from "@/lib/plain";
 
-export default function LookupPage() {
+function LookupPage() {
+  const searchParams = useSearchParams();
   const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<LookupResponse | null>(null);
+  const [prefillDone, setPrefillDone] = useState(false);
 
-  const run = useCallback(async () => {
-    const s = symbol.trim();
+  const run = useCallback(async (override?: string) => {
+    const s = (override ?? symbol).trim();
     if (!s) return;
     setLoading(true);
     setError(null);
@@ -36,6 +50,39 @@ export default function LookupPage() {
       setLoading(false);
     }
   }, [symbol]);
+
+  useEffect(() => {
+    if (prefillDone) return;
+    const pre =
+      searchParams.get("prefill") ||
+      searchParams.get("symbol") ||
+      searchParams.get("q");
+    if (pre && pre.trim()) {
+      const s = pre.trim().toUpperCase();
+      setSymbol(s);
+      setPrefillDone(true);
+      void run(s);
+    } else {
+      setPrefillDone(true);
+    }
+  }, [searchParams, prefillDone, run]);
+
+  const verd = useMemo(
+    () => (data ? enrichPlanFields(data.verdict) : null),
+    [data]
+  );
+  const planLines = useMemo(
+    () => (verd ? plainPlanLines(verd) : []),
+    [verd]
+  );
+  const closes = data?.tech?.fields?.closes_30d;
+  const hasSpark =
+    Array.isArray(closes) && closes.length >= 2;
+  const hasPlanLevels =
+    verd != null &&
+    ((typeof verd.entry === "number" && typeof verd.sl === "number") ||
+      (typeof verd.buy_trigger === "number" &&
+        typeof verd.stop_invalidation === "number"));
 
   return (
     <div className="space-y-4">
@@ -86,7 +133,7 @@ export default function LookupPage() {
         </p>
       ) : null}
 
-      {data ? (
+      {data && verd ? (
         <div className="space-y-4">
           <div className="flex items-center justify-between text-xs text-slate-500">
             <span>
@@ -100,7 +147,81 @@ export default function LookupPage() {
             </Link>
           </div>
 
-          <VerdictCard v={data.verdict} href={`/ideas/${encodeURIComponent(data.ticker)}?live=1`} />
+          <section className="rounded-2xl border border-emerald-500/30 bg-emerald-950/20 p-4">
+            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-emerald-400/90">
+              Plain plan
+            </h2>
+            <p className="mb-2 text-xs text-slate-400">{plainAction(verd.action)}</p>
+            <ul className="space-y-1.5 text-sm text-slate-100">
+              {planLines.map((line) => (
+                <li key={line} className="leading-snug">
+                  {line}
+                </li>
+              ))}
+            </ul>
+            {verd.reasons?.[0] ? (
+              <p className="mt-3 text-xs leading-relaxed text-slate-400">
+                {plainReason(verd.reasons[0])}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 space-y-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Tape chart
+            </h2>
+            {hasSpark ? (
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
+                  ~{(closes as number[]).length}-day closes
+                </p>
+                <Sparkline closes={closes as number[]} />
+              </div>
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-center text-sm text-slate-500">
+                UNKNOWN — no Yahoo OHLC (≥30 bars preferred) for sparkline
+              </p>
+            )}
+            {hasPlanLevels ? (
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
+                  Plan ladder
+                </p>
+                <PlanChart
+                  entry={
+                    typeof verd.entry === "number"
+                      ? verd.entry
+                      : typeof verd.buy_trigger === "number"
+                        ? verd.buy_trigger
+                        : null
+                  }
+                  sl={
+                    typeof verd.sl === "number"
+                      ? verd.sl
+                      : typeof verd.stop_invalidation === "number"
+                        ? verd.stop_invalidation
+                        : null
+                  }
+                  targets={
+                    verd.sell_targets?.length
+                      ? verd.sell_targets
+                      : verd.targets
+                  }
+                />
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500">
+                Plan chart: UNKNOWN (entry / stop incomplete)
+              </p>
+            )}
+            <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-xs text-slate-300 space-y-1">
+              <p>{plainStructure(String(data.tech.fields.structure ?? ""))}</p>
+              <p>{plainBreakout(String(data.tech.fields.breakout_state ?? ""))}</p>
+              <p>{plainVsDma(String(data.tech.fields.price_vs_dma ?? ""))}</p>
+            </div>
+          </section>
+
+          <VerdictCard v={verd} href={`/ideas/${encodeURIComponent(data.ticker)}?live=1`} />
 
           <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -232,5 +353,20 @@ function Item({ label, value }: { label: string; value: string }) {
       </dt>
       <dd className="mt-0.5 font-medium text-slate-100">{value}</dd>
     </div>
+  );
+}
+
+export default function LookupPageSuspense() {
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Lookup</h1>
+          <p className="text-sm text-slate-400">Loading…</p>
+        </div>
+      }
+    >
+      <LookupPage />
+    </Suspense>
   );
 }

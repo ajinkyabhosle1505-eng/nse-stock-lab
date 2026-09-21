@@ -14,10 +14,11 @@ Mobile-first **Next.js (App Router) + TypeScript + Tailwind** progressive web ap
 | `/ideas/[ticker]` | Detail: verdict + tech / funda / news lanes |
 | `/ideas/[ticker]?live=1` | Same detail, but live Yahoo tech + TS risk merge |
 | `/budget-picks` | Budget + risk% → scan ~22 NSE names → top 10 buys that fit sizing |
+| `/screen` | Budget-aware screener (~50 Nifty50-ish) with sector / PE / ROE / volume filters → links to Lookup |
 | `/report` | Daily report from `public/data/daily_report.json` |
 | `/paper` | Paper ledger fills; unrealized shows **UNKNOWN** when unmarked |
 
-Sticky SEBI banner on every screen. Bottom nav: Budget · Lookup · Ideas · Picks · Report · Paper.
+Sticky SEBI banner on every screen. Bottom nav: Budget · Lookup · Screen · Ideas · Picks · Report · Paper.
 
 ## Live APIs
 
@@ -33,6 +34,14 @@ Normalizes to `INFY.NS`, returns:
 - **verdict**: `mergeVerdict(tech, {budget, risk_pct, funda, news})` — gates rumored-only + funda fail; folds `why_for_verdict`; horizon from `catalyst_expiry`
 
 Optional: `budget_inr`, `risk_pct` (default 10000 / 1). Never invents numbers/filings.
+
+### `POST /api/screen`
+
+Body: `{ "budget_inr": 10000, "sectors?": ["Banks"], "pe_max?", "roe_min?", "min_volume_vs_avg?", "risk_pct?" }`
+
+Universe (~50 liquid NSE): see `src/lib/screenUniverse.ts`. Yahoo CMP + volume via tech helpers; funda via `fetchLiveFunda`. Filters `cmp<=budget` when known. Returns `results` + `fits` with `ticker, cmp, sector, pe_ttm, roe_pct, volume_vs_avg_20d, afford_shares, fits_budget, unknowns, sources`. Concurrency 4. Never invents prices.
+
+Also `GET /api/screen?budget_inr=10000` for curl smoke.
 
 ### `POST /api/budget-picks`
 
@@ -68,6 +77,9 @@ curl -s "http://localhost:3000/api/lookup?symbol=PNB" | head
 curl -s -X POST http://localhost:3000/api/budget-picks \
   -H 'content-type: application/json' \
   -d '{"budget_inr":10000,"risk_pct":1}' | head
+curl -s -X POST http://localhost:3000/api/screen \
+  -H 'content-type: application/json' \
+  -d '{"budget_inr":10000}' | head
 ```
 
 ### Production build
