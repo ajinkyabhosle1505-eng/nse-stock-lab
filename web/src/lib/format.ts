@@ -1,5 +1,6 @@
-export function inr(n: number | null | undefined): string {
-  if (n == null || Number.isNaN(n)) return "—";
+export function inr(n: number | null | undefined | "UNKNOWN"): string {
+  if (n == null || n === "UNKNOWN" || (typeof n === "number" && Number.isNaN(n)))
+    return n === "UNKNOWN" ? "UNKNOWN" : "—";
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
@@ -7,8 +8,12 @@ export function inr(n: number | null | undefined): string {
   }).format(n);
 }
 
-export function num(n: number | null | undefined, digits = 2): string {
-  if (n == null || Number.isNaN(n)) return "—";
+export function num(
+  n: number | null | undefined | "UNKNOWN",
+  digits = 2
+): string {
+  if (n == null || n === "UNKNOWN" || (typeof n === "number" && Number.isNaN(n)))
+    return n === "UNKNOWN" ? "UNKNOWN" : "—";
   return new Intl.NumberFormat("en-IN", {
     maximumFractionDigits: digits,
   }).format(n);
@@ -28,4 +33,30 @@ export function actionDot(action: string): string {
   if (a === "hold") return "bg-amber-400";
   if (a === "avoid") return "bg-rose-400";
   return "bg-slate-400";
+}
+
+export function planLevels(v: {
+  buy_trigger?: number | string | null;
+  entry?: number | null;
+  sell_targets?: number[];
+  targets?: number[];
+  stop_invalidation?: number | null;
+  sl?: number | null;
+  time_horizon?: string | null;
+}): {
+  buy_trigger: string;
+  sell_targets: string;
+  stop_invalidation: string;
+  time_horizon: string;
+} {
+  const bt = v.buy_trigger ?? v.entry;
+  const st = v.sell_targets?.length ? v.sell_targets : v.targets;
+  const si = v.stop_invalidation ?? v.sl;
+  return {
+    buy_trigger:
+      typeof bt === "string" ? bt : bt != null ? inr(bt) : "—",
+    sell_targets: st?.length ? st.map((t) => num(t)).join(" · ") : "—",
+    stop_invalidation: si != null ? inr(si) : "—",
+    time_horizon: v.time_horizon || "2–6 weeks (swing)",
+  };
 }

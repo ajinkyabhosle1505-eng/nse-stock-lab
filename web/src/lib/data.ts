@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import path from "path";
+import { enrichPlanFields, enrichVerdicts } from "./plan";
 import type { LaneFile, LedgerFile, Verdict, VerdictsFile } from "./types";
 
 const dataDir = path.join(process.cwd(), "public", "data");
@@ -10,7 +11,8 @@ async function loadJson<T>(name: string): Promise<T> {
 }
 
 export async function getVerdicts(): Promise<VerdictsFile> {
-  return loadJson<VerdictsFile>("verdicts.json");
+  const file = await loadJson<VerdictsFile>("verdicts.json");
+  return { ...file, verdicts: enrichVerdicts(file.verdicts || []) };
 }
 
 export async function getLedger(): Promise<LedgerFile> {
@@ -49,5 +51,6 @@ export function findVerdict(
   ticker: string
 ): Verdict | undefined {
   const t = ticker.toUpperCase();
-  return file.verdicts.find((v) => v.ticker.toUpperCase() === t);
+  const v = file.verdicts.find((x) => x.ticker.toUpperCase() === t);
+  return v ? enrichPlanFields(v) : undefined;
 }

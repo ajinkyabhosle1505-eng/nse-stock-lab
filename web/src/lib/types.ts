@@ -15,10 +15,18 @@ export interface Verdict {
   avoids_note?: string | null;
   insufficient_data?: boolean;
   sebi_banner?: string;
-  cmp?: number | null;
+  cmp?: number | null | "UNKNOWN";
   under_1000?: boolean;
   penny_under_50?: boolean;
   sector?: string | null;
+  /** Plan fields */
+  buy_trigger?: number | string | null;
+  sell_targets?: number[];
+  stop_invalidation?: number | null;
+  time_horizon?: string | null;
+  live?: boolean;
+  yahoo_symbol?: string;
+  note?: string;
 }
 
 export interface VerdictsFile {
@@ -84,4 +92,52 @@ export interface LedgerFile {
     realizedPnl?: number;
     unrealizedPnl?: number | string;
   };
+}
+
+export interface TechFields {
+  cmp: number | "UNKNOWN";
+  atr_14: number | "UNKNOWN";
+  support_levels: number[];
+  resistance_levels: number[];
+  structure: string;
+  breakout_state: string;
+  breakout_level?: number | "UNKNOWN";
+  rsi_14: number | "UNKNOWN";
+  price_vs_dma: string;
+  dma_20: number | "UNKNOWN";
+  dma_50: number | "UNKNOWN";
+  dma_200: number | "UNKNOWN";
+  volume_vs_avg_20d?: number | "UNKNOWN";
+  price_bucket?: string;
+  timeframe: string;
+}
+
+export interface TechLane {
+  ticker: string;
+  yahoo_symbol: string;
+  fields: TechFields;
+  unknowns: string[];
+  sources: string[];
+  ts: string;
+}
+
+export interface LookupResponse {
+  ticker: string;
+  yahoo_symbol: string;
+  as_of: string;
+  sebi_banner: string;
+  tech: TechLane;
+  funda: {
+    ticker: string;
+    fields: Record<string, unknown>;
+    unknowns: string[];
+    note: string;
+  };
+  news: {
+    ticker: string;
+    fields: Record<string, unknown>;
+    unknowns: string[];
+    note: string;
+  };
+  verdict: Verdict;
 }

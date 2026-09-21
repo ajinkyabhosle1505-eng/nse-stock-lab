@@ -1,0 +1,790 @@
+{
+  "job_id": "multi-2026-09-21-p3",
+  "as_of": "2026-09-21T22:23+05:30",
+  "MarketOverview": {
+    "indices_note": "21 Sep 2026 IST close: Sensex +564.03 pts (+0.76%) to 74,858.99; Nifty +67.90 pts (+0.29%) to 23,414.30 (fourth straight session; rebound after six consecutive weekly declines). Bargain buying + softer crude aided heavyweights; Bank Nifty ~56,470 in local wraps. India VIX noted ~11.29 in one BusinessLine note.",
+    "global_cues": [
+      "Brent eased ~2.3–2.7% to ~$101.2–$101.7/bbl (still >$100) on Saudi supply recovery hopes / UN diplomacy watch",
+      "Geopolitics overlay: US–Iran rhetoric and Middle East shipping/Houthi risk remains",
+      "Asia closed firmer in domestic wraps; softer US Treasury yields cited as support",
+      "INR closed ~95.81/$ (+15 paise) on Monday per The Hindu"
+    ],
+    "policy_watch": [
+      "UFBU nationwide bank strike 28–30 Sep 2026 (branch disruption risk; digital/ATM buffers)",
+      "Ongoing energy-security focus (Samudra Manthan offshore; IOC gas pipeline approval; BPCL Andhra EC watch)",
+      "SEBI sandbox tokenised bonds (REC pilot) as capital-markets innovation watch",
+      "HDFC Bank CEO succession pending RBI approval ahead of 26 Oct exit"
+    ],
+    "sector_flows": [
+      "PSU banks: strike overhang + capital market activity (Canara AT1; PNB EMTN; BoB pension sub)",
+      "Energy/OMCs: IOC KTPL board nod; BPCL Andhra cost firm-up; Brent still elevated for margins",
+      "Power/transmission: NTPC RE COD + BESS terminate; POWERGRID ₹5,000 Cr bond approval",
+      "Metals/mining: NMDC 60 MT FY27 target; VEDL promoter encumbrance release; CIL e-auction premiums",
+      "Telecom: IDEA ₹35,000 Cr package still in-principle/rumored only"
+    ]
+  },
+  "results": [
+    {
+      "ticker": "RELIANCE",
+      "fields": {
+        "headline": "RIL allots ₹12,000 Cr NCDs at 7.47% (16 Sep); JP Morgan India Conference meetings 21 Sep; Jio IPO timing still open",
+        "summary": "On 16 Sep 2026 RIL allotted 12 lakh PPD Series Q unsecured NCDs aggregating ₹12,000 Cr at 7.47% p.a., maturing 16 Sep 2031 (CRISIL/CARE AAA). Executives held JP Morgan India Conference one-on-ones in Mumbai on 21 Sep with no UPSI disclosed. Jio Platforms has SEBI DRHP observations (28 Aug) but November listing timing remains market rumor, not company-confirmed.",
+        "event_type": "deal",
+        "sentiment": "mixed",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "RELIANCE"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "conglomerate",
+          "energy",
+          "telecom"
+        ],
+        "macro_tags": [
+          "funding",
+          "IPO_watch"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 120000000000,
+        "as_of_ist": "2026-09-21T15:00:00+05:30",
+        "why_for_verdict": "Confirmed large AAA NCD raise supports liquidity; IR meetings routine; treat Jio IPO calendar as rumored only."
+      },
+      "unknowns": [
+        "Exact Nov Jio IPO pricing/window not company-confirmed"
+      ],
+      "sources": [
+        "https://www.psuconnect.in/corporate-news/reliance-industries-allots-12-000-crore-ncds-at-7-47-coupon",
+        "https://businessupturn.com/business/reliance-industries-participates-in-j-p-morgan-india-conference-2026-in-mumbai/"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "HDFCBANK",
+      "fields": {
+        "headline": "HDFC Bank board submits two MD & CEO names to RBI (12 Sep); ED pipeline expanded ahead of Jagdishan exit 26 Oct",
+        "summary": "Exchange filing/Bloomberg 12 Sep 2026: Board approved submitting two MD & CEO candidates (order of preference, 3-year term, remuneration) to RBI; names undisclosed. Also proposed reappointment of V. Srinivasa Rangan as ED (23 Nov 2026–22 Nov 2027), appointment of Jimmy Tata as ED (subject to RBI), and creation of a fourth WTD seat. Current CEO Sashidhar Jagdishan retires at close of business 26 Oct 2026. Broker notes treat RBI approval as near-term re-rating watch.",
+        "event_type": "other",
+        "sentiment": "mixed",
+        "confidence_news": 9,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "HDFCBANK"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "banks",
+          "private_banks"
+        ],
+        "macro_tags": [
+          "succession",
+          "RBI_approval"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T18:00:00+05:30",
+        "why_for_verdict": "Confirmed succession filing removes process uncertainty but RBI pick/timing and candidate identity still open—med, not high."
+      },
+      "unknowns": [
+        "Candidate identities not disclosed by bank",
+        "RBI approval timing unknown"
+      ],
+      "sources": [
+        "https://www.bloomberg.com/news/articles/2026-09-12/hdfc-bank-submits-names-of-two-candidates-for-ceo-role-to-rbi",
+        "https://bfsi.economictimes.indiatimes.com/articles/hdfc-bank-board-submits-2-names-to-rbi-for-md-ceo-appointment/134132070"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "SBIN",
+      "fields": {
+        "headline": "SBI advises customers ahead of UFBU nationwide bank strike 28–30 Sep 2026",
+        "summary": "On 21 Sep 2026 SBI issued a customer advisory ahead of a three-day United Forum of Bank Unions strike (28–30 Sep), noting branch disruption risk while ATMs, CSPs, YONO/UPI/digital channels are expected to remain available. Separately, media says SBI is in-principle anchor for Vi’s proposed funding package (primary for IDEA, secondary for SBI).",
+        "event_type": "other",
+        "sentiment": "mixed",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "SBIN"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "low",
+        "sectors": [
+          "banks",
+          "PSU_banks"
+        ],
+        "macro_tags": [
+          "labour",
+          "ops_disruption"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T15:26:00+05:30",
+        "why_for_verdict": "Confirmed ops headline; digital buffers limit equity impact—low strength; Vi funding is not SBI equity catalyst."
+      },
+      "unknowns": [
+        "Strike actual branch closure intensity varies by location"
+      ],
+      "sources": [
+        "https://www.thehindu.com/news/national/bank-strike-september-28-30-sbi-issues-advisory-banking-services-available/article71490677.ece"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "ITC",
+      "fields": {
+        "headline": "ITC raises Classic Connect / Gold Flake Superstar MRPs mid-Sep as staggered cigarette tax pass-through continues",
+        "summary": "Channel/broker checks around 16 Sep 2026: Classic Connect 20s MRP to ~₹428 from ~₹390; Gold Flake Superstar 10s to ~₹89 from ~₹79, part of staggered pass-through after Feb 2026 cigarette tax shock. Management had indicated ~50–60% of tax already passed; brokers estimate ~60–70% after this round with more hikes possible in Q2/Q3 FY27. Q1 cigarette EBIT was already pressured (~35% YoY drop in coverage); volume risk remains the offset.",
+        "event_type": "sector",
+        "sentiment": "mixed",
+        "confidence_news": 7,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "ITC"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "FMCG",
+          "tobacco"
+        ],
+        "macro_tags": [
+          "pricing",
+          "tax_pass_through"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T18:00:00+05:30",
+        "why_for_verdict": "Price hikes support margin recovery path but are source/channel-confirmed not a formal exchange PR; volume elasticity still the risk."
+      },
+      "unknowns": [
+        "Not a numbered exchange filing—based on channel checks/wires",
+        "Further pass-through quantum and volume hit uncertain"
+      ],
+      "sources": [
+        "https://www.zeebiz.com/market-news/news-itc-cigarette-price-hike-company-raises-prices-of-key-brands-shares-gain-over-2-402294",
+        "https://www.icicidirect.com/research/equity/trending-news/itc-has-increased-prices-of-classic-connect-and-gold-flake-superstar"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "BANKBARODA",
+      "fields": {
+        "headline": "BoB incorporates BOB Pension Fund Management Co. (21 Sep); ₹80.10 Cr for 80.10% stake by 31 Dec; UFBU strike still on watch",
+        "summary": "Exchange-linked 21 Sep 2026 disclosure: Bank of Baroda incorporated BOB Pension Fund Management Company Ltd (RoC certificate same day) to act as PFRDA-regulated PFM; proposed cash subscription ₹80.10 Cr for 80.10% by 31 Dec 2026 (RBI approval Jul 10; PFRDA sponsor letter May 5). Separately UFBU strike windows incl. 28–30 Sep remain a near-term ops overlay; earlier ₹6,000 Cr AT1/Tier-II programme stays approved without a fresh Sep allotment found.",
+        "event_type": "other",
+        "sentiment": "bull",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "BANKBARODA"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "low",
+        "sectors": [
+          "banks",
+          "PSU_banks"
+        ],
+        "macro_tags": [
+          "pension",
+          "diversification",
+          "labour"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 801000000,
+        "as_of_ist": "2026-09-21T19:52:00+05:30",
+        "why_for_verdict": "Confirmed new subsidiary is strategic but small vs balance sheet—low strength; strike is ops noise only."
+      },
+      "unknowns": [
+        "Subsidiary yet to commence operations",
+        "No Sep 2026 AT1 allotment confirmation found"
+      ],
+      "sources": [
+        "https://scanx.trade/stock-market-news/companies/bank-baroda-incorporates-pension-fund-management-subsidiary/51546155",
+        "https://scanx.trade/stock-market-news/companies/bank-baroda-informs-union-strike-notice-sept-11-oct-26/49910340"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "PNB",
+      "fields": {
+        "headline": "PNB establishes $1.5 bn EMTN programme; Moody’s/Fitch/CareEdge ratings assigned mid-Sep",
+        "summary": "PNB informed exchanges that its USD 1.5 billion Euro Medium Term Note programme (set up 16 Sep 2026) received Moody’s (P)Baa3, Fitch BBB- and CareEdge BBB+/Stable on 17 Sep, disclosed 18 Sep. No tranche issuance yet. Bank also flagged possible disruption around UFBU strike dates.",
+        "event_type": "deal",
+        "sentiment": "bull",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "PNB"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "med",
+        "sectors": [
+          "banks",
+          "PSU_banks"
+        ],
+        "macro_tags": [
+          "funding",
+          "offshore_bonds"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T12:00:00+05:30",
+        "why_for_verdict": "Confirmed MTN platform and investment-grade-style ratings open FCY funding optionality; actual raise still pending."
+      },
+      "unknowns": [
+        "No EMTN tranche priced yet"
+      ],
+      "sources": [
+        "https://www.psuconnect.in/bank-news/pnb-gets-ratings-from-moody-fitch-careedge-for-1-5-billion-mtn-programme",
+        "https://www.angelone.in/news/stocks/pnb-share-price-in-focus-establishes-1-50-billion-euro-medium-term-note-programme"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "CANBK",
+      "fields": {
+        "headline": "Canara Bank raises ₹2,042 Cr via 8.10% Basel III AT1 bonds (allotment 18 Sep)",
+        "summary": "Canara Bank completed EBP bidding on 16 Sep 2026 for perpetual AT1 bonds (₹2,000 Cr base + ₹42 Cr greenshoe), raising ₹2,042 Cr at 8.10% coupon; deemed allotment/pay-in 18 Sep, proposed NSE listing, issuer call 18 Sep 2031.",
+        "event_type": "deal",
+        "sentiment": "bull",
+        "confidence_news": 9,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "CANBK"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "banks",
+          "PSU_banks"
+        ],
+        "macro_tags": [
+          "capital",
+          "AT1"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 20420000000,
+        "as_of_ist": "2026-09-21T12:00:00+05:30",
+        "why_for_verdict": "Fresh confirmed AT1 capital raise strengthens CET1/AT1 stack; coupon and size disclosed."
+      },
+      "unknowns": [],
+      "sources": [
+        "https://www.psuconnect.in/bank-news/canara-bank-raises-2042-crore-through-basel-iii-at1-bond-issue"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "ONGC",
+      "fields": {
+        "headline": "ONGC reports gas strike at deepwater MN-DW18-1 well off Odisha (Samudra Manthan)",
+        "summary": "Company statement covered by TOI: first Samudra Manthan well in Mahanadi Offshore Basin (~43 km off Odisha) flowed gas from 1,441–1,452 m interval after strike on 18 Sep 2026; drilled to 1,623 m. Monetisation subject to appraisal/commercial evaluation.",
+        "event_type": "other",
+        "sentiment": "bull",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "ONGC"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "med",
+        "sectors": [
+          "oil_gas",
+          "PSU_energy"
+        ],
+        "macro_tags": [
+          "energy_security",
+          "exploration"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T12:00:00+05:30",
+        "why_for_verdict": "Confirmed discovery news; commercial reserves/size not yet proven—medium horizon, med strength."
+      },
+      "unknowns": [
+        "Commercial resource size and development timeline pending appraisal"
+      ],
+      "sources": [
+        "https://timesofindia.indiatimes.com/business/india-business/ongc-strikes-gas-in-deepwater-well-off-odisha-coast/articleshow/134390067.cms"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "NTPC",
+      "fields": {
+        "headline": "NTPC group capacity to 91,164 MW after Gujarat RE CODs; Mouda 400 MWh BESS contract terminated",
+        "summary": "Exchange-linked disclosure (via NGEL, 18–19 Sep): 68.22 MW Dahod solar third-party capacity and 9.45 MW Vanki wind COD lift group installed capacity to 91,164 MW. Separately on 21 Sep reports, NTPC terminated GRIL’s ₹413.37 Cr Mouda BESS EPC for default and encashed ~₹91 Cr securities, with re-tender planned.",
+        "event_type": "order",
+        "sentiment": "mixed",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "NTPC"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "power",
+          "renewables",
+          "PSU_energy"
+        ],
+        "macro_tags": [
+          "capacity",
+          "BESS"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T16:00:00+05:30",
+        "why_for_verdict": "Capacity adds are bullish for RE growth; BESS termination is ops/execution noise, not core generation hit."
+      },
+      "unknowns": [],
+      "sources": [
+        "https://bioenergytimes.com/ntpc-groups-installed-capacity-rises-to-91164-mw-after-two-renewable-units-start-operations/",
+        "https://www.pv-magazine-india.com/2026/09/21/ntpc-terminates-400-mwh-bess-contract-at-mouda-thermal-power-plant-over-contractor-default/"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "POWERGRID",
+      "fields": {
+        "headline": "POWERGRID approves up to ₹5,000 Cr 84th series private bond issue (10-year)",
+        "summary": "On 21 Sep 2026 POWERGRID approved issuance of its 84th bond series via private placement: base ₹1,000 Cr with ₹4,000 Cr greenshoe (up to ₹5,000 Cr / Rs 50 bn). Unsecured NCD, taxable, 10-year tenor with annual redemption from year 4; coupon via EBP bidding; proposed BSE/NSE listing.",
+        "event_type": "deal",
+        "sentiment": "neutral",
+        "confidence_news": 9,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "POWERGRID"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "low",
+        "sectors": [
+          "power",
+          "transmission",
+          "PSU_infra"
+        ],
+        "macro_tags": [
+          "funding",
+          "bonds"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 50000000000,
+        "as_of_ist": "2026-09-21T18:00:00+05:30",
+        "why_for_verdict": "Routine confirmed funding approval; equity impact typically muted until deployment news."
+      },
+      "unknowns": [
+        "Coupon/final allotment size pending EBP"
+      ],
+      "sources": [
+        "https://indianinfrastructure.com/2026/09/21/powergrid-approves-rs-50-billion-bond-issue/",
+        "https://www.sahi.com/news/powergrid-greenlights-fundraising-up-to-5-000-crore-through-private-bond-placement"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "COALINDIA",
+      "fields": {
+        "headline": "CIL Aug SWMA e-auction at ~59% premium (39% allocation); Reuters flags ~40% of coal plants critically low stocks",
+        "summary": "Company/auction data early Sep: August SWMA e-auction allocated ~82.76 lt of ~210.66 lt offered (~39%) at ~59% average premium over notified price. Parallel Reuters (21 Sep) reported ~74 coal-fired plants with critically low stocks amid monsoon/logistics strains—sector offtake urgency overlay rather than a CIL order win. Aug production soft YoY in MoC stats while offtake held up in other wires.",
+        "event_type": "sector",
+        "sentiment": "mixed",
+        "confidence_news": 7,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "COALINDIA"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "mining",
+          "power",
+          "PSU_energy"
+        ],
+        "macro_tags": [
+          "e_auction",
+          "coal_stocks",
+          "logistics"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T18:00:00+05:30",
+        "why_for_verdict": "High auction premiums support realisation narrative; plant stock stress can lift offtake urgency but also flags logistics risk."
+      },
+      "unknowns": [
+        "Plant-level stock data via Reuters/CEA-style datasets",
+        "No fresh CIL price guidance found this pass"
+      ],
+      "sources": [
+        "https://www.psuconnect.in/psu-news/coal-india-e-auction-data-august-2026-39-allocation-59-premium-over-notified-price",
+        "https://www.reuters.com/business/energy/nearly-40-indias-coal-power-plants-running-critically-low-fuel-data-show-2026-09-21/"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "IOC",
+      "fields": {
+        "headline": "IOC board approves ₹2,448.70 Cr Kochi–Thoothukudi natural gas pipeline (424.65 km)",
+        "summary": "On 21 Sep 2026 IOC board gave investment approval for KTPL: estimated cost ₹2,448.70 Cr, length 424.65 km, system capacity 6.84 MMSCMD (incl. ≥1.71 MMSCMD common carrier), linking Kochi LNG terminal to southern TN/Kerala demand centres after PNGRB authorisation.",
+        "event_type": "order",
+        "sentiment": "bull",
+        "confidence_news": 9,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "IOC"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "med",
+        "sectors": [
+          "oil_gas",
+          "midstream",
+          "PSU_energy"
+        ],
+        "macro_tags": [
+          "gas_infra",
+          "CGD"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 24487000000,
+        "as_of_ist": "2026-09-21T16:00:00+05:30",
+        "why_for_verdict": "Board-approved capex on gas midstream is confirmed positive for long-term gas network; construction timetable not in filing."
+      },
+      "unknowns": [
+        "Commissioning schedule/financing mix not disclosed in summaries reviewed"
+      ],
+      "sources": [
+        "https://www.cnbctv18.com/market/indian-oil-share-price-board-approves-2448-70-crore-investment-for-kochi-thoothukudi-gas-pipeline-19994866.htm",
+        "https://tradebrains.in/indian-markets/indian-oil-corporation-in-focus-after-board-approves-2448-cr-gas-pipeline-project-12559608"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "BPCL",
+      "fields": {
+        "headline": "BPCL firms ~₹1.45 lakh Cr Andhra greenfield 9 MTPA refinery-petchem cost; final EC eyed end-Sep",
+        "summary": "Mid-Sep 2026 (around 16 Sep) wires: CMD Sanjay Khanna told AP CM Naidu the Ramayapatnam-area greenfield 9 MTPA refinery-cum-petrochemical project (Prakasam–Nellore) is estimated at ~₹1.45 lakh Cr; final environmental clearance expected by end-Sep with investment cost to be firmed after EIL study in Oct. Broader Project Aspire also cites Kochi 15.5→17 MTPA and Bina expansion; Q1 FY27 loss context from elevated crude remains a near-term margin watch.",
+        "event_type": "policy",
+        "sentiment": "mixed",
+        "confidence_news": 7,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "BPCL"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "med",
+        "sectors": [
+          "oil_gas",
+          "refining",
+          "PSU_energy"
+        ],
+        "macro_tags": [
+          "capex",
+          "petrochemicals",
+          "crude"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 1450000000000,
+        "as_of_ist": "2026-09-21T18:00:00+05:30",
+        "why_for_verdict": "Large confirmed project planning milestone, but FID/EC still pending and near-term refining margins pressured by >$100 Brent."
+      },
+      "unknowns": [
+        "Final EC and Oct EIL cost firm-up pending",
+        "Construction start timing not locked"
+      ],
+      "sources": [
+        "https://www.newkerala.com/news/a/bpcls-petrochemical-project-andhra-pradesh-estimated-cost-rs-541.htm",
+        "https://indianinfrastructure.com/2026/09/11/views-of-sanjay-khanna-energy-security-cannot-depend-on-a-single-source-route-or-technology/"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "IRFC",
+      "fields": {
+        "headline": "No fresh Sep 2026 IRFC deal filing located; AUM/~₹5 Tn target and May $1.1 bn JPY ECB remain backdrop",
+        "summary": "This research pass did not find a September 2026 exchange catalyst. Closest solid items: management/AUM commentary targeting ~₹5 trillion scale into Sep 2026 with diversified infra lending; and 21 May 2026 signing of five-year unsecured JPY ECB equivalent to $1.1 bn arranged by SBI, HDFC Bank, SMBC and DBS. FY27 borrowing-plan notes exist but are not a 21 Sep event.",
+        "event_type": "deal",
+        "sentiment": "neutral",
+        "confidence_news": 3,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "IRFC"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "low",
+        "sectors": [
+          "NBFC",
+          "rail_infra",
+          "PSU_finance"
+        ],
+        "macro_tags": [
+          "ECB",
+          "funding",
+          "thin_news"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T22:00:00+05:30",
+        "why_for_verdict": "Thin for DeskJob date—May ECB/AUM targets are confirmed but stale vs 21 Sep; treat as low-strength funding backdrop only."
+      },
+      "unknowns": [
+        "No Sep 2026 primary IRFC order/bond allotment found in WebSearch this pass",
+        "Exact INR equivalent of May ECB varies with FX"
+      ],
+      "sources": [
+        "https://infra.economictimes.indiatimes.com/news/railways/irfc-raises-1-1-billion-equivalent-ecb-led-by-sbi-hdfc-bank-and-dbs/131272908",
+        "https://www.sahi.com/news/irfc-targets-5-trillion-aum-by-sept-2026-with-1-65-nim-projection-for-fy27-2880-PE1_COR"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "RECLTD",
+      "fields": {
+        "headline": "REC completes India’s first SEBI-sandbox tokenised corporate bond issue (~₹500 Cr @ 7.30%)",
+        "summary": "On 7 Sep 2026 REC said it raised ~₹500 Cr (base ~₹100 Cr + greenshoe ~₹400 Cr) in tokenised corporate bonds under SEBI Regulatory Sandbox; ~8x oversubscribed vs ~₹796 Cr bids; 7.30% coupon, tenor 1y9m; same-day pay-in/allotment/listing on NSE and BSE. Separately PFC–REC merger path remains a medium-horizon structural watch.",
+        "event_type": "deal",
+        "sentiment": "bull",
+        "confidence_news": 9,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "RECLTD"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "NBFC",
+          "power_finance",
+          "PSU_finance"
+        ],
+        "macro_tags": [
+          "tokenisation",
+          "bonds",
+          "sandbox"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 5000000000,
+        "as_of_ist": "2026-09-21T12:00:00+05:30",
+        "why_for_verdict": "Confirmed innovative funding success; size modest vs loan book so strength med not high."
+      },
+      "unknowns": [],
+      "sources": [
+        "https://www.cnbctv18.com/market/stocks/rec-share-price-issues-rs-500-crore-tokenised-corporate-bond-in-indias-first-sebi-sandbox-pilot-19985909.htm"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "PFC",
+      "fields": {
+        "headline": "PFC–REC merger: Presidential consent already granted; scheme still needs remaining clearances",
+        "summary": "Presidential consent for merging REC into PFC was intimated around 10 Jun 2026; boards later approved a swap of 88 PFC shares per 100 REC. As of late Sep the combination still requires shareholder/creditor/regulatory steps; expected effectiveness often cited toward FY28 start subject to approvals. No fresh Sep bond allotment located beyond routine interest/redemption notices.",
+        "event_type": "mna",
+        "sentiment": "mixed",
+        "confidence_news": 6,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "PFC",
+          "RECLTD"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "medium",
+        "catalyst_strength": "med",
+        "sectors": [
+          "NBFC",
+          "power_finance",
+          "PSU_finance"
+        ],
+        "macro_tags": [
+          "merger",
+          "consolidation"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T21:00:00+05:30",
+        "why_for_verdict": "Structural M&A path is officially advanced but not closed; Sep tape lacks a fresh PFC-only deal catalyst."
+      },
+      "unknowns": [
+        "Effective date and final regulatory path still open",
+        "No Sep 2026 primary PFC issuance catalyst found"
+      ],
+      "sources": [
+        "https://economictimes.indiatimes.com/industry/energy/power/president-approves-merger-of-rec-with-power-finance-corporation/articleshow/131641061.cms",
+        "https://www.pib.gov.in/PressReleasePage.aspx?PRID=2279256&lang=1&reg=48"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "NMDC",
+      "fields": {
+        "headline": "NMDC targets ~60 MT iron ore FY27; Aug output +21% YoY to 4.07 MT; chairman reiterates 21 Sep",
+        "summary": "Provisional Aug data (1–2 Sep): iron ore production 4.07 MT (+~21% YoY), sales 3.58 MT (+~6%); Apr–Aug output 23.23 MT (+26%) vs sales 18.72 MT (+2%)—production outpacing sales. On 20–21 Sep chairman Amitava Mukherjee reiterated FY27 ~60 MT target (~20% YoY vs ~53 MT prior year) via existing mines plus NCL JV, with 100 MT by 2030–31 still the long goal; EC applications for some deposits underway.",
+        "event_type": "results",
+        "sentiment": "bull",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "NMDC"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "mining",
+          "metals",
+          "PSU_mining"
+        ],
+        "macro_tags": [
+          "iron_ore",
+          "production"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T12:00:00+05:30",
+        "why_for_verdict": "Confirmed volume ramp and explicit FY27 target are constructive; sales lag and steel-cycle pricing still cap strength at med."
+      },
+      "unknowns": [
+        "Realisation/pricing for Aug–Sep not isolated in this pass",
+        "EC timelines for expansion deposits open"
+      ],
+      "sources": [
+        "https://www.cnbctv18.com/business/companies/nmdc-august-iron-ore-production-rises-21pc-yoy-to-4-07-mt-19981769.htm",
+        "https://www.thehindu.com/business/Industry/nmdc-looks-to-hit-60-mt-iron-ore-production-mark-this-fiscal-chairman/article71487223.ece",
+        "https://www.steelorbis.com/steel-news/latest-news/indias-nmdc-likely-to-produce-60-million-mt-of-iron-ore-in-fy-2026-27-1478648.htm"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "VEDL",
+      "fields": {
+        "headline": "VEDL promoter releases encumbrance on 51.93% stake after $1.1 bn bond repay (eff. 17 Sep); other pledges remain",
+        "summary": "Regulatory disclosure covered 18 Sep (updated 21 Sep): encumbrances released over 51.93% of VEDL capital held by Twin Star/Welter/VH Mauritius II after full repayment of $1.1 bn guaranteed senior bonds (9.475% 2030 + 9.850% 2033) of Vedanta Resources Finance II PLC; effective 17 Sep. Release also covers demerged entities listed 15 Jun. Filing notes other encumbrances from prior facilities may still subsist; separate Sep tap/$400 mn-linked covenants reported on demerged Aluminium Metal shares.",
+        "event_type": "deal",
+        "sentiment": "mixed",
+        "confidence_news": 8,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "VEDL"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "metals",
+          "mining",
+          "conglomerate"
+        ],
+        "macro_tags": [
+          "deleveraging",
+          "encumbrance",
+          "promoter"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T12:35:00+05:30",
+        "why_for_verdict": "Confirmed bond repay + partial encumbrance release is credit-positive, but residual pledges/new covenants keep sentiment mixed."
+      },
+      "unknowns": [
+        "Other subsistence encumbrances quantum not fully enumerated",
+        "USD/INR for remaining VRL debt not restated here"
+      ],
+      "sources": [
+        "https://scanx.trade/stock-market-news/companies/vedanta-releases-encumbrance-54-72-promoter-stake-bond-repayment/51255088"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "YESBANK",
+      "fields": {
+        "headline": "YES Bank Q1 FY27 PAT ~₹1,071 Cr (+~34% YoY); FCNR(B) mobilisation cited ~₹32,700 Cr; ₹16,000 Cr raise enabling only",
+        "summary": "Reported Q1 FY27 net profit ~₹1,071 Cr with improving asset-quality ratios in wires; CET1 cited ~14%. Secondary/broker notes estimate ~₹32,700 Cr FCNR(B) deposits under RBI swap window (~10.4% of deposits). Shareholders earlier backed board resolutions including a proposed up-to-₹16,000 Cr fund-raise envelope (equity+debt caps as disclosed at AGM)—enabling, not executed. No fresh 21 Sep price-sensitive breakthrough filing isolated; avoid penny momentum hype.",
+        "event_type": "results",
+        "sentiment": "mixed",
+        "confidence_news": 6,
+        "confirmation_status": "confirmed",
+        "tickers": [
+          "YESBANK"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "low",
+        "sectors": [
+          "banks",
+          "private_banks"
+        ],
+        "macro_tags": [
+          "earnings",
+          "FCNR",
+          "capital"
+        ],
+        "insider_side": null,
+        "deal_value_inr": null,
+        "as_of_ist": "2026-09-21T21:00:00+05:30",
+        "why_for_verdict": "Earnings/FCNR narrative constructive but not a fresh 21 Sep breakout; capital raise enabling only—keep strength low for penny risk."
+      },
+      "unknowns": [
+        "FCNR ₹32,700 Cr figure is broker/secondary estimate—verify vs bank disclosure before sizing",
+        "Exact Q1 filing PDF not re-fetched this pass"
+      ],
+      "sources": [
+        "https://www.business-standard.com/markets/capital-market-news/yes-bank-clocks-nearly-34-yoy-rise-in-q1-pat-126072000341_1.html",
+        "https://www.sahi.com/news/yes-bank-raises-fcnr-b-deposits-under-rbi-swap-window-3484-PE1_COR",
+        "https://www.mfnewsdaily.in/yes-bank-shareholders-back-all-7-board-resolutions-at-22nd-agm/"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    },
+    {
+      "ticker": "IDEA",
+      "fields": {
+        "headline": "SBI-led lenders weighing ~₹35,000 Cr / $3.5 bn debt package for Vodafone Idea CapEx—still contingent",
+        "summary": "Bloomberg/CNBC-TV18-style wires in Sep: SBI said to be in-principle anchor (~₹7,000 Cr share cited in some reports) for a ~₹35,000 Cr consortium facility for network CapEx, with contours possibly finalising into Oct, subject to other banks, documentation, guarantees and promoter leadership conditions. Not a completed disbursement or company exchange confirmation of drawdown.",
+        "event_type": "rumor",
+        "sentiment": "mixed",
+        "confidence_news": 5,
+        "confirmation_status": "rumored",
+        "tickers": [
+          "IDEA"
+        ],
+        "relevance": "primary",
+        "impact_horizon": "near_term",
+        "catalyst_strength": "med",
+        "sectors": [
+          "telecom"
+        ],
+        "macro_tags": [
+          "funding",
+          "CapEx",
+          "debt"
+        ],
+        "insider_side": null,
+        "deal_value_inr": 350000000000,
+        "as_of_ist": "2026-09-21T18:00:00+05:30",
+        "why_for_verdict": "Material if closed, but status is rumored/in-principle only—strictly not confirmed; high binary risk for penny name."
+      },
+      "unknowns": [
+        "No confirmed full consortium sanction+disbursement as of 21 Sep research",
+        "Guarantee/promoter conditions unresolved in press accounts"
+      ],
+      "sources": [
+        "https://www.bloomberg.com/news/articles/2026-09-10/sbi-led-group-said-to-provide-3-5-billion-debt-to-vodafone-idea",
+        "https://www.cnbctv18.com/market/vodafone-idea-share-price-gains-sbi-led-consortium-evaluates-35000-crore-funding-proposal-19989065.htm",
+        "https://www.outlookbusiness.com/corporate/vodafone-idea-usd-35-bn-sbi-led-loan-kumar-mangalam-birla-board-guarantees-conditions"
+      ],
+      "ts": "2026-09-21T22:23:00+05:30"
+    }
+  ]
+}

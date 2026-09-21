@@ -1,0 +1,13 @@
+{
+  "job_id": "multi-2026-09-21-p3",
+  "budget_inr": 10000,
+  "risk_pct": 1,
+  "as_of": "2026-09-21T22:23:00+05:30",
+  "universe": [
+    "RELIANCE", "HDFCBANK", "SBIN", "ITC", "BANKBARODA", "PNB", "CANBK",
+    "ONGC", "NTPC", "POWERGRID", "COALINDIA", "IOC", "BPCL",
+    "IRFC", "RECLTD", "PFC", "NMDC", "VEDL",
+    "YESBANK", "IDEA"
+  ],
+  "notes": "Phase 3 fresh DeskJob. Same contracts. Prefer PSU/Infra/Banks/IT/Energy/Midcaps. Yahoo SYMBOL.NS for Tech."
+}
