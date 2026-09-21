@@ -1,28 +1,30 @@
 {
-  "job_id": "multi-2026-09-21",
+  "job_id": "multi-2026-09-21-p3",
   "as_of": "2026-09-21",
   "budget_inr": 10000,
   "risk_pct": 0.01,
   "risk_inr_per_idea": 100.0,
-  "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+  "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
   "MarketOverview": {
-    "indices_note": "21 Sep 2026 IST: Sensex +564.03 pts (+0.76%) to 74,858.99; Nifty +67.90 pts (+0.29%) to 23,414.30 after six consecutive weekly declines; bargain buying + softer crude aided heavyweights. Sectorally pharma/FMCG/realty bid; metal and PSU bank softer intraday in some wires.",
+    "indices_note": "21 Sep 2026 IST close: Sensex +564.03 pts (+0.76%) to 74,858.99; Nifty +67.90 pts (+0.29%) to 23,414.30 (fourth straight session; rebound after six consecutive weekly declines). Bargain buying + softer crude aided heavyweights; Bank Nifty ~56,470 in local wraps. India VIX noted ~11.29 in one BusinessLine note.",
     "global_cues": [
-      "Brent eased ~2.3\u20132.7% to ~$101.1\u2013$101.9/bbl as Saudi supply-disruption fears cooled (still >$100)",
-      "Geopolitics overlay: US\u2013Iran rhetoric and UN week diplomacy hopes; Middle East shipping/Houthi risk remains",
-      "Asia closed firmer (Nikkei, Hang Seng, KOSPI higher per domestic wrap)",
-      "US 10Y yield softer in local market notes; India 10Y near ~7.06%"
+      "Brent eased ~2.3\u20132.7% to ~$101.2\u2013$101.7/bbl (still >$100) on Saudi supply recovery hopes / UN diplomacy watch",
+      "Geopolitics overlay: US\u2013Iran rhetoric and Middle East shipping/Houthi risk remains",
+      "Asia closed firmer in domestic wraps; softer US Treasury yields cited as support",
+      "INR closed ~95.81/$ (+15 paise) on Monday per The Hindu"
     ],
     "policy_watch": [
       "UFBU nationwide bank strike 28\u201330 Sep 2026 (branch disruption risk; digital/ATM buffers)",
-      "Ongoing energy-security focus (Samudra Manthan offshore; gas pipeline approvals)",
-      "SEBI sandbox tokenised bonds (REC pilot) as capital-markets innovation watch"
+      "Ongoing energy-security focus (Samudra Manthan offshore; IOC gas pipeline approval; BPCL Andhra EC watch)",
+      "SEBI sandbox tokenised bonds (REC pilot) as capital-markets innovation watch",
+      "HDFC Bank CEO succession pending RBI approval ahead of 26 Oct exit"
     ],
     "sector_flows": [
-      "IT: selective deal flow (TCS Aareal; Wipro ABB renew) vs softer index days",
-      "PSU banks: strike overhang + capital market activity (Canara AT1; PNB EMTN)",
-      "Energy/power: IOC pipeline board nod; NTPC RE COD; POWERGRID bond approval; coal stock stress narrative",
-      "Renewables OEMs: Suzlon Ayana 200 MW order; Tata Power captive solar COD"
+      "PSU banks: strike overhang + capital market activity (Canara AT1; PNB EMTN; BoB pension sub)",
+      "Energy/OMCs: IOC KTPL board nod; BPCL Andhra cost firm-up; Brent still elevated for margins",
+      "Power/transmission: NTPC RE COD + BESS terminate; POWERGRID \u20b95,000 Cr bond approval",
+      "Metals/mining: NMDC 60 MT FY27 target; VEDL promoter encumbrance release; CIL e-auction premiums",
+      "Telecom: IDEA \u20b935,000 Cr package still in-principle/rumored only"
     ]
   },
   "counts": {
@@ -46,20 +48,20 @@
       "shares": 19,
       "r_r": 0.83,
       "reasons": [
-        "Tape: breakout, price_vs_dma=above, RSI~59 \u2014 only clear breakout in this universe",
-        "Funda: PSU Bank, PE~6.1, ROE~13, margins stable",
-        "News: confirmed MTN platform / IG-style ratings \u2014 funding optionality (med)",
+        "Tape: breakout, price_vs_dma=above, RSI~59 \u2014 cleanest long structure in this book",
+        "Funda: PSU Bank PE~6.1, ROE~13, margins stable",
+        "News: confirmed MTN platform + IG-style ratings \u2014 funding optionality (med)",
         "Sector preference: Banks / large"
       ],
       "risk_flags": [
-        "Post-breakout listed resistance very tight (118.2\u2013119.5) \u2014 use ATR extension targets",
+        "Listed resistance tight (118.2\u2013119.5) \u2014 use ATR extension; scale at first res",
         "debt_equity UNKNOWN (bank)",
-        "promoter_pledge_pct UNKNOWN",
-        "Promoter holding down over 3Y"
+        "Promoter holding down over 3Y; contingent liabilities",
+        "promoter_pledge_pct UNKNOWN"
       ],
       "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 118.0,
       "under_1000": true,
       "penny_under_50": false,
@@ -80,21 +82,19 @@
       "r_r": 1.1,
       "reasons": [
         "Tape: HH_HL, RSI~50, mixed vs DMAs \u2014 constructive not extended",
-        "Funda: Energy PSU, PE~8.2, ROE~28 strong, low D/E 0.12",
-        "News: sector coal logistics stress \u2014 mixed, not a company deal catalyst",
-        "Sector preference: Energy / large",
-        "R/R to ATR-T1 1.1 after stretch; listed 422 is first scale-out"
+        "Funda: Energy PSU PE~8.2, ROE~28, low D/E 0.12",
+        "News: sector coal logistics mixed \u2014 not a company deal catalyst",
+        "Sector preference: Energy / large"
       ],
       "risk_flags": [
-        "Listed resistance close (422\u2013432); T1 uses 2.5\u00d7ATR stretch \u2014 trim if rejected at 422",
-        "Margin trend compressing",
-        "Promoter holding -2% last quarter",
-        "promoter_pledge_pct UNKNOWN",
-        "Sector logistics/offtake risk"
+        "Margin trend compressing; promoter holding -2% last quarter",
+        "Listed resistance 422\u2013432 \u2014 scale there; T1 uses ATR stretch",
+        "Sector logistics/offtake risk",
+        "promoter_pledge_pct UNKNOWN"
       ],
       "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 414.7,
       "under_1000": true,
       "penny_under_50": false,
@@ -111,19 +111,19 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Hold: LH_LL on support; UFBU strike noise (see MarketOverview)",
+        "Hold: LH_LL on support; UFBU strike noise in MarketOverview",
         "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=40.3, CMP=233.64",
         "Funda: sector=Banks, PE=5.47, ROE=12.7, D/E=None",
-        "News why: Strike is confirmed near-term ops noise; capital programme approved but not a fresh Sep issuance catalyst."
+        "News why: Confirmed new subsidiary is strategic but small vs balance sheet\u2014low strength; strike is ops noise only."
       ],
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN",
-        "Low interest coverage (Screener cons)",
+        "Low interest coverage",
         "Large contingent liabilities"
       ],
       "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [232.3]",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 233.64,
       "under_1000": true,
       "penny_under_50": false,
@@ -140,7 +140,7 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Hold: Fresh AT1 is positive but tape still LH_LL below DMAs",
+        "Hold: Fresh AT1 positive but tape still LH_LL below DMAs",
         "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=40.87, CMP=123.7",
         "Funda: sector=Banks, PE=5.66, ROE=16.1, D/E=None",
         "News why: Fresh confirmed AT1 capital raise strengthens CET1/AT1 stack; coupon and size disclosed."
@@ -148,45 +148,15 @@
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN",
         "Low interest coverage",
-        "Working capital days increased"
+        "Large contingent liabilities"
       ],
       "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [123.66]",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 123.7,
       "under_1000": true,
       "penny_under_50": false,
       "sector": "Banks"
-    },
-    {
-      "ticker": "IRFC",
-      "action": "hold",
-      "confidence_1_10": 7,
-      "entry": null,
-      "sl": null,
-      "targets": [],
-      "size_inr": 0,
-      "shares": null,
-      "r_r": null,
-      "reasons": [
-        "Hold: High D/E ~7.7 + LH_LL below \u2014 funding NBFC, not a breakout",
-        "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=35.38, CMP=80.22",
-        "Funda: sector=Financial Services, PE=14.6, ROE=12.8, D/E=7.69",
-        "News why: Thin for DeskJob date\u2014May ECB is confirmed but stale vs 21 Sep; treat as low-strength funding backdrop only."
-      ],
-      "risk_flags": [
-        "promoter_pledge_pct UNKNOWN",
-        "Low interest coverage",
-        "High debtors (5136 days)",
-        "High debt_equity=7.69"
-      ],
-      "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [78.95]",
-      "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 80.22,
-      "under_1000": true,
-      "penny_under_50": false,
-      "sector": "Financial Services"
     },
     {
       "ticker": "NTPC",
@@ -201,20 +171,19 @@
       "reasons": [
         "Hold: RE adds vs BESS noise; tape LH_LL below",
         "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=41.37, CMP=326.4",
-        "Funda: sector=Energy, PE=11.4, ROE=15.1, D/E=1.33",
+        "Funda: sector=Power, PE=11.4, ROE=15.1, D/E=1.33",
         "News why: Capacity adds are bullish for RE growth; BESS termination is ops/execution noise, not core generation hit."
       ],
       "risk_flags": [
-        "promoter_pledge_pct UNKNOWN",
-        "May be capitalizing interest cost (Screener cons)"
+        "promoter_pledge_pct UNKNOWN"
       ],
       "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [323.65]",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 326.4,
       "under_1000": true,
       "penny_under_50": false,
-      "sector": "Energy"
+      "sector": "Power"
     },
     {
       "ticker": "PFC",
@@ -234,12 +203,12 @@
       ],
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN",
-        "Low interest coverage (Screener cons)",
+        "Low interest coverage",
         "High debt_equity=7.62"
       ],
       "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [336.3]",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 344.75,
       "under_1000": true,
       "penny_under_50": false,
@@ -263,44 +232,16 @@
       ],
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN",
-        "Low interest coverage (Screener cons)",
+        "Low interest coverage",
         "High debt_equity=6.1"
       ],
       "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [308.5]",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 310.2,
       "under_1000": true,
       "penny_under_50": false,
       "sector": "Financial Services"
-    },
-    {
-      "ticker": "RELIANCE",
-      "action": "hold",
-      "confidence_1_10": 7,
-      "entry": null,
-      "sl": null,
-      "targets": [],
-      "size_inr": 0,
-      "shares": null,
-      "r_r": null,
-      "reasons": [
-        "Hold: LH_LL below all DMAs; NCD = funding not momentum",
-        "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=40.36, CMP=1247.4",
-        "Funda: sector=Conglomerate / Energy, PE=22.4, ROE=8.91, D/E=0.45",
-        "News why: Confirmed large AAA NCD raise supports liquidity; IR meetings routine; treat Jio IPO calendar as rumored only."
-      ],
-      "risk_flags": [
-        "promoter_pledge_pct UNKNOWN",
-        "Low ROE 8.77% over last 3 years"
-      ],
-      "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [1226.4]",
-      "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 1247.4,
-      "under_1000": false,
-      "penny_under_50": false,
-      "sector": "Conglomerate / Energy"
     },
     {
       "ticker": "SBIN",
@@ -320,21 +261,21 @@
       ],
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN",
-        "Low interest coverage (Screener cons)",
+        "Low interest coverage",
         "Large contingent liabilities"
       ],
       "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [992.4]",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 996.0,
       "under_1000": true,
       "penny_under_50": false,
       "sector": "Banks"
     },
     {
-      "ticker": "TCS",
+      "ticker": "BPCL",
       "action": "hold",
-      "confidence_1_10": 7,
+      "confidence_1_10": 6,
       "entry": null,
       "sl": null,
       "targets": [],
@@ -342,21 +283,21 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Hold: Excellent funda (ROE~52) but LH_LL below DMAs \u2014 wait reclaim; over \u20b91000 control name",
-        "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=35.79, CMP=2128.7",
-        "Funda: sector=IT, PE=14.4, ROE=51.8, D/E=0.11",
-        "News why: Confirmed strategic deal with EU bank; value undisclosed so strength capped at med; Best Buy item stays rumored."
+        "Hold: Project planning milestone but FID pending + margin pressure; LH_LL",
+        "Tape: structure=LH_LL, breakout_state=none, vs_dma=mixed, RSI=52.08, CMP=312.75",
+        "Funda: sector=Oil & Gas, PE=8.94, ROE=28.8, D/E=0.54",
+        "News why: Large confirmed project planning milestone, but FID/EC still pending and near-term refining margins pressured by >$100 Brent."
       ],
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN"
       ],
-      "avoids_note": "Skip fresh longs until reclaim dma_20 / structure not LH_LL; support watch [2105.0]",
+      "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 2128.7,
-      "under_1000": false,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 312.75,
+      "under_1000": true,
       "penny_under_50": false,
-      "sector": "IT"
+      "sector": "Oil & Gas"
     },
     {
       "ticker": "IOC",
@@ -369,9 +310,9 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Hold: Cleaner Energy funda + gas capex; tape still LH_LL",
+        "Hold: Cleaner Oil&Gas funda + gas capex; tape still LH_LL",
         "Tape: structure=LH_LL, breakout_state=none, vs_dma=mixed, RSI=49.92, CMP=136.53",
-        "Funda: sector=Energy, PE=5.74, ROE=20.5, D/E=0.6",
+        "Funda: sector=Oil & Gas, PE=5.74, ROE=20.5, D/E=0.6",
         "News why: Board-approved capex on gas midstream is confirmed positive for long-term gas network; construction timetable not in filing."
       ],
       "risk_flags": [
@@ -379,11 +320,68 @@
       ],
       "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 136.53,
       "under_1000": true,
       "penny_under_50": false,
-      "sector": "Energy"
+      "sector": "Oil & Gas"
+    },
+    {
+      "ticker": "ITC",
+      "action": "hold",
+      "confidence_1_10": 6,
+      "entry": null,
+      "sl": null,
+      "targets": [],
+      "size_inr": 0,
+      "shares": null,
+      "r_r": null,
+      "reasons": [
+        "Hold: FMCG quality; LH_LL / mixed \u2014 no breakout",
+        "Tape: structure=LH_LL, breakout_state=none, vs_dma=mixed, RSI=50.37, CMP=267.0",
+        "Funda: sector=FMCG, PE=17.0, ROE=29.3, D/E=0.03",
+        "News why: Price hikes support margin recovery path but are source/channel-confirmed not a formal exchange PR; volume elasticity still the risk."
+      ],
+      "risk_flags": [
+        "promoter_pledge_pct UNKNOWN",
+        "Zero promoter holding"
+      ],
+      "avoids_note": null,
+      "insufficient_data": false,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 267.0,
+      "under_1000": true,
+      "penny_under_50": false,
+      "sector": "FMCG"
+    },
+    {
+      "ticker": "NMDC",
+      "action": "hold",
+      "confidence_1_10": 6,
+      "entry": null,
+      "sl": null,
+      "targets": [],
+      "size_inr": 0,
+      "shares": null,
+      "r_r": null,
+      "reasons": [
+        "Hold: Volume targets constructive but RSI~36 below DMAs \u2014 wait reclaim",
+        "Tape: structure=unclear, breakout_state=none, vs_dma=below, RSI=36.39, CMP=79.8",
+        "Funda: sector=Metals & Mining, PE=9.34, ROE=23.4, D/E=0.19",
+        "News why: Confirmed volume ramp and explicit FY27 target are constructive; sales lag and steel-cycle pricing still cap strength at med."
+      ],
+      "risk_flags": [
+        "promoter_pledge_pct UNKNOWN",
+        "Large contingent liabilities",
+        "Working capital days increased"
+      ],
+      "avoids_note": null,
+      "insufficient_data": false,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 79.8,
+      "under_1000": true,
+      "penny_under_50": false,
+      "sector": "Metals & Mining"
     },
     {
       "ticker": "ONGC",
@@ -398,7 +396,7 @@
       "reasons": [
         "Hold: Discovery news constructive; tape LH_LL \u2014 wait structure",
         "Tape: structure=LH_LL, breakout_state=none, vs_dma=mixed, RSI=50.3, CMP=235.63",
-        "Funda: sector=Energy, PE=6.79, ROE=11.6, D/E=0.47",
+        "Funda: sector=Oil & Gas, PE=6.79, ROE=11.6, D/E=0.47",
         "News why: Confirmed discovery news; commercial reserves/size not yet proven\u2014medium horizon, med strength."
       ],
       "risk_flags": [
@@ -407,11 +405,11 @@
       ],
       "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 235.63,
       "under_1000": true,
       "penny_under_50": false,
-      "sector": "Energy"
+      "sector": "Oil & Gas"
     },
     {
       "ticker": "POWERGRID",
@@ -426,25 +424,24 @@
       "reasons": [
         "Hold: Routine funding; LH_LL / mixed DMAs",
         "Tape: structure=LH_LL, breakout_state=none, vs_dma=mixed, RSI=46.49, CMP=266.1",
-        "Funda: sector=Energy, PE=15.6, ROE=15.3, D/E=1.47",
+        "Funda: sector=Power, PE=15.6, ROE=15.3, D/E=1.47",
         "News why: Routine confirmed funding approval; equity impact typically muted until deployment news."
       ],
       "risk_flags": [
-        "promoter_pledge_pct UNKNOWN",
-        "Poor sales growth 3.35% over 5 years"
+        "promoter_pledge_pct UNKNOWN"
       ],
       "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 266.1,
       "under_1000": true,
       "penny_under_50": false,
-      "sector": "Energy"
+      "sector": "Power"
     },
     {
-      "ticker": "TATAPOWER",
+      "ticker": "HDFCBANK",
       "action": "hold",
-      "confidence_1_10": 6,
+      "confidence_1_10": 5,
       "entry": null,
       "sl": null,
       "targets": [],
@@ -452,23 +449,23 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Hold: COD incremental; PE~30 + LH_LL",
-        "Tape: structure=LH_LL, breakout_state=none, vs_dma=mixed, RSI=48.99, CMP=367.15",
-        "Funda: sector=Energy, PE=30.0, ROE=10.2, D/E=1.93",
-        "News why: Confirmed capacity COD supports RE scale story; single 100 MW add is incremental vs portfolio size."
+        "Hold: Breakout tagged but structure still LH_LL / mixed DMAs; succession RBI pick open \u2014 wait reclaim clarity, not chase 739 res",
+        "Tape: structure=LH_LL, breakout_state=breakout, vs_dma=mixed, RSI=59.53, CMP=739.5",
+        "Funda: sector=Banks, PE=14.5, ROE=13.6, D/E=None",
+        "News why: Confirmed succession filing removes process uncertainty but RBI pick/timing and candidate identity still open\u2014med, not high."
       ],
       "risk_flags": [
         "promoter_pledge_pct UNKNOWN",
-        "Trading at 2.97x book",
-        "Low 3Y ROE 11.0%"
+        "Low interest coverage",
+        "Large contingent liabilities"
       ],
       "avoids_note": null,
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 367.15,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 739.5,
       "under_1000": true,
       "penny_under_50": false,
-      "sector": "Energy"
+      "sector": "Banks"
     },
     {
       "ticker": "IDEA",
@@ -482,62 +479,30 @@
       "r_r": null,
       "reasons": [
         "Avoid: breakdown + negative book / heavy red_flags + catalyst only rumored",
-        "Tape: structure=HH_HL, breakout_state=breakdown, price_vs_dma=mixed, RSI=41.47",
+        "Tape: structure=HH_HL, breakout_state=breakdown, vs_dma=mixed, RSI=41.47",
         "News: sentiment=mixed, confirmation=rumored, strength=med",
-        "News why: Material if closed, but status is rumored/in-principle only\u2014strictly not confirmed; high binary risk."
+        "News why: Material if closed, but status is rumored/in-principle only\u2014strictly not confirmed; high binary risk for penny name."
       ],
       "risk_flags": [
         "Tape breakdown",
         "Negative book / PE ROE D-E UNKNOWN",
-        "Promoter holding -24.7% over 3Y",
+        "Promoter -24.7% over 3Y",
         "News confirmation_status=rumored",
         "promoter_pledge_pct UNKNOWN",
         "Negative book value",
         "Low interest coverage",
-        "Promoter holding -24.7% over 3Y"
+        "Promoter holding decreased over 3 years (-24.7%)"
       ],
       "avoids_note": "breakdown + negative book / heavy red_flags + catalyst only rumored",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 13.84,
       "under_1000": true,
       "penny_under_50": true,
       "sector": "Telecom"
     },
     {
-      "ticker": "WIPRO",
-      "action": "avoid",
-      "confidence_1_10": 8,
-      "entry": null,
-      "sl": null,
-      "targets": [],
-      "size_inr": 0,
-      "shares": null,
-      "r_r": null,
-      "reasons": [
-        "Avoid: tape breakdown under DMAs; funda sales growth weak",
-        "Tape: structure=LH_LL, breakout_state=breakdown, price_vs_dma=below, RSI=32.44",
-        "News: sentiment=bull, confirmation=confirmed, strength=low",
-        "News why: Confirmed renewal with industrial major; low strength because TCV undisclosed and already in prior bookings narrative."
-      ],
-      "risk_flags": [
-        "Breakdown",
-        "price_vs_dma=below",
-        "RSI~32",
-        "Poor 5Y sales growth",
-        "promoter_pledge_pct UNKNOWN",
-        "Poor sales growth 8.38% over 5 years"
-      ],
-      "avoids_note": "tape breakdown under DMAs; funda sales growth weak",
-      "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 164.55,
-      "under_1000": true,
-      "penny_under_50": false,
-      "sector": "IT"
-    },
-    {
-      "ticker": "BHEL",
+      "ticker": "IRFC",
       "action": "avoid",
       "confidence_1_10": 7,
       "entry": null,
@@ -547,30 +512,31 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Avoid: HH_HL tape but rich PE~63 / weak ROE \u2014 valuation veto on fresh long",
-        "Tape: structure=HH_HL, breakout_state=none, price_vs_dma=above, RSI=54.85",
-        "News: sentiment=bull, confirmation=confirmed, strength=med",
-        "News why: Confirmed JV formalises long AMC annuity around sleeper VB fleet; incremental equity surprise may be limited if order was previously known."
+        "Avoid: high D/E ~7.7 + LH_LL below DMAs \u2014 funding NBFC, no long structure",
+        "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=35.38",
+        "News: sentiment=neutral, confirmation=confirmed, strength=low",
+        "News why: Thin for DeskJob date\u2014May ECB/AUM targets are confirmed but stale vs 21 Sep; treat as low-strength funding backdrop only."
       ],
       "risk_flags": [
-        "PE ~62.9 / 5.77x book",
-        "3Y ROE ~3.2%",
-        "Promoter holding -5% over 3Y",
+        "debt_equity ~7.7",
+        "LH_LL + below DMAs",
+        "RSI~35",
+        "Stale/low-strength funding news",
         "promoter_pledge_pct UNKNOWN",
-        "Trading at 5.77x book",
-        "Low 3Y ROE 3.18%",
-        "Promoter holding -5% over 3Y"
+        "Low interest coverage",
+        "Low ROE 13.0% over last 3 years",
+        "High debtors (5136 days)"
       ],
-      "avoids_note": "HH_HL tape but rich PE~63 / weak ROE \u2014 valuation veto on fresh long",
+      "avoids_note": "high D/E ~7.7 + LH_LL below DMAs \u2014 funding NBFC, no long structure",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 433.4,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 80.22,
       "under_1000": true,
       "penny_under_50": false,
-      "sector": "Capital Goods"
+      "sector": "Financial Services"
     },
     {
-      "ticker": "SUZLON",
+      "ticker": "RELIANCE",
       "action": "avoid",
       "confidence_1_10": 7,
       "entry": null,
@@ -580,27 +546,59 @@
       "shares": null,
       "r_r": null,
       "reasons": [
-        "Avoid: penny, LH_LL below DMAs RSI~34 despite confirmed order \u2014 no long structure",
-        "Tape: structure=LH_LL, breakout_state=none, price_vs_dma=below, RSI=33.96",
-        "News: sentiment=bull, confirmation=confirmed, strength=med",
-        "News why: Confirmed DevCo order with clear MW/scope; INR contract value not in disclosure\u2014strength med, no hype."
+        "Avoid: over \u20b91000 control name: LH_LL below all DMAs \u2014 no fresh long (NCD = funding not momentum)",
+        "Tape: structure=LH_LL, breakout_state=none, vs_dma=below, RSI=40.36",
+        "News: sentiment=mixed, confirmation=confirmed, strength=med",
+        "News why: Confirmed large AAA NCD raise supports liquidity; IR meetings routine; treat Jio IPO calendar as rumored only."
       ],
       "risk_flags": [
         "LH_LL + below DMAs",
-        "RSI~34",
-        "Low promoter holding 11.7%",
-        "Penny liquidity/volatility",
+        "Low 3Y ROE",
+        "Jio IPO timing rumored",
+        "price_bucket=over_1000",
         "promoter_pledge_pct UNKNOWN",
-        "Low promoter holding 11.7%",
-        "No dividend despite profits"
+        "Low ROE 8.77% over last 3 years"
       ],
-      "avoids_note": "penny, LH_LL below DMAs RSI~34 despite confirmed order \u2014 no long structure",
+      "avoids_note": "over \u20b91000 control name: LH_LL below all DMAs \u2014 no fresh long (NCD = funding not momentum)",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
-      "cmp": 43.34,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 1247.4,
+      "under_1000": false,
+      "penny_under_50": false,
+      "sector": "Conglomerate / Energy"
+    },
+    {
+      "ticker": "VEDL",
+      "action": "avoid",
+      "confidence_1_10": 7,
+      "entry": null,
+      "sl": null,
+      "targets": [],
+      "size_inr": 0,
+      "shares": null,
+      "r_r": null,
+      "reasons": [
+        "Avoid: below DMAs / unclear structure; residual pledges keep credit news mixed \u2014 skip fresh long",
+        "Tape: structure=unclear, breakout_state=none, vs_dma=below, RSI=42.99",
+        "News: sentiment=mixed, confirmation=confirmed, strength=med",
+        "News why: Confirmed bond repay + partial encumbrance release is credit-positive, but residual pledges/new covenants keep sentiment mixed."
+      ],
+      "risk_flags": [
+        "price_vs_dma=below",
+        "structure unclear",
+        "Promoter holding down last quarter",
+        "Residual encumbrance risk",
+        "promoter_pledge_pct UNKNOWN",
+        "Promoter holding decreased last quarter (-1.66%)",
+        "Large contingent liabilities"
+      ],
+      "avoids_note": "below DMAs / unclear structure; residual pledges keep credit news mixed \u2014 skip fresh long",
+      "insufficient_data": false,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
+      "cmp": 260.5,
       "under_1000": true,
-      "penny_under_50": true,
-      "sector": "Capital Goods / Renewables"
+      "penny_under_50": false,
+      "sector": "Metals & Mining"
     },
     {
       "ticker": "YESBANK",
@@ -614,23 +612,23 @@
       "r_r": null,
       "reasons": [
         "Avoid: penny bank with zero promoter holding and heavy contingent-liability flags",
-        "Tape: structure=unclear, breakout_state=none, price_vs_dma=above, RSI=54.48",
+        "Tape: structure=unclear, breakout_state=none, vs_dma=above, RSI=54.48",
         "News: sentiment=mixed, confirmation=confirmed, strength=low",
-        "News why: Earnings print is constructive but not a fresh 21 Sep breakout; capital raise is enabling, not executed\u2014keep strength low."
+        "News why: Earnings/FCNR narrative constructive but not a fresh 21 Sep breakout; capital raise enabling only\u2014keep strength low for penny risk."
       ],
       "risk_flags": [
         "Zero promoter holding",
         "Low 3Y ROE",
         "Large contingent liabilities",
-        "No dividend despite profits",
+        "Penny liquidity/volatility",
         "promoter_pledge_pct UNKNOWN",
         "No dividend despite profits",
-        "Low 3Y ROE 5.33%",
-        "Large contingent liabilities"
+        "Low interest coverage",
+        "Low ROE 5.33% over last 3 years"
       ],
       "avoids_note": "penny bank with zero promoter holding and heavy contingent-liability flags",
       "insufficient_data": false,
-      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Levels are not a recommendation to buy or sell.",
       "cmp": 23.17,
       "under_1000": true,
       "penny_under_50": true,
@@ -653,18 +651,18 @@
         "action": "avoid"
       },
       {
-        "ticker": "WIPRO",
-        "note": "tape breakdown under DMAs; funda sales growth weak",
+        "ticker": "IRFC",
+        "note": "high D/E ~7.7 + LH_LL below DMAs \u2014 funding NBFC, no long structure",
         "action": "avoid"
       },
       {
-        "ticker": "BHEL",
-        "note": "HH_HL tape but rich PE~63 / weak ROE \u2014 valuation veto on fresh long",
+        "ticker": "RELIANCE",
+        "note": "over \u20b91000 control name: LH_LL below all DMAs \u2014 no fresh long (NCD = funding not momentum)",
         "action": "avoid"
       },
       {
-        "ticker": "SUZLON",
-        "note": "penny, LH_LL below DMAs RSI~34 despite confirmed order \u2014 no long structure",
+        "ticker": "VEDL",
+        "note": "below DMAs / unclear structure; residual pledges keep credit news mixed \u2014 skip fresh long",
         "action": "avoid"
       },
       {
@@ -680,11 +678,6 @@
         "cmp": 13.84
       },
       {
-        "ticker": "SUZLON",
-        "action": "avoid",
-        "cmp": 43.34
-      },
-      {
         "ticker": "YESBANK",
         "action": "avoid",
         "cmp": 23.17
@@ -692,18 +685,10 @@
     ],
     "section6_summary": {
       "buys": [
-        "PNB",
-        "COALINDIA"
+        "COALINDIA",
+        "PNB"
       ],
       "paper_fills": [
-        {
-          "ticker": "PNB",
-          "size_inr": 2242.0,
-          "shares": 19,
-          "entry": 118.0,
-          "sl": 112.93,
-          "r_r": 0.83
-        },
         {
           "ticker": "COALINDIA",
           "size_inr": 2073.5,
@@ -711,9 +696,18 @@
           "entry": 414.7,
           "sl": 395.09,
           "r_r": 1.1
+        },
+        {
+          "ticker": "PNB",
+          "size_inr": 2242.0,
+          "shares": 19,
+          "entry": 118.0,
+          "sl": 112.93,
+          "r_r": 0.83
         }
       ],
-      "note": "Paper Sim buy-only; hold/avoid size 0. Only 2 buys this tape \u2014 most universe LH_LL."
+      "note": "Paper Sim buy-only; hold/avoid size 0. HDFCBANK breakout held (LH_LL conflict)."
     }
-  }
+  },
+  "generated_at": "2026-09-21T22:30:36.539868+05:30"
 }

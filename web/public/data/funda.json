@@ -1,5 +1,5 @@
 {
-  "job_id": "multi-2026-09-21",
+  "job_id": "multi-2026-09-21-p3",
   "as_of": "2026-09-21",
   "source": "screener.in",
   "results": [
@@ -39,43 +39,47 @@
       "sources": [
         "https://www.screener.in/company/RELIANCE/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:30+05:30"
     },
     {
-      "ticker": "TCS",
+      "ticker": "HDFCBANK",
       "fields": {
-        "revenue_ttm": 275859,
-        "revenue_yoy_pct": 8,
-        "pat_ttm": 50055,
-        "pat_yoy_pct": 9,
-        "eps_ttm": 137.64,
-        "pe_ttm": 14.4,
-        "pb": 7.19,
-        "roe_pct": 51.8,
-        "roce_pct": 63.0,
-        "debt_equity": 0.11,
-        "interest_coverage": 59.0,
-        "promoter_holding_pct": 71.77,
-        "fii_holding_pct": 9.07,
-        "dii_holding_pct": 13.41,
+        "revenue_ttm": 351819,
+        "revenue_yoy_pct": 3,
+        "pat_ttm": 82512,
+        "pat_yoy_pct": 12,
+        "eps_ttm": 51.35,
+        "pe_ttm": 14.5,
+        "pb": 1.9,
+        "roe_pct": 13.6,
+        "roce_pct": 7.02,
+        "promoter_holding_pct": 0.0,
+        "fii_holding_pct": 41.82,
+        "dii_holding_pct": 41.75,
         "qoq_revenue_trend": "up",
         "margin_trend": "stable",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "IT services flagship of Tata group"
+          "Largest private bank by assets post HDFC Ltd merger"
         ],
-        "red_flags": [],
-        "sector": "IT",
+        "red_flags": [
+          "Low interest coverage",
+          "Large contingent liabilities",
+          "Zero promoter holding"
+        ],
+        "sector": "Banks",
         "market_cap_bucket": "large"
       },
       "unknowns": [
+        "debt_equity",
+        "interest_coverage",
         "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
-        "https://www.screener.in/company/TCS/consolidated/"
+        "https://www.screener.in/company/HDFCBANK/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:30+05:30"
     },
     {
       "ticker": "SBIN",
@@ -99,22 +103,60 @@
           "Largest PSU bank; ~22% deposit market share"
         ],
         "red_flags": [
-          "Low interest coverage (Screener cons)",
+          "Low interest coverage",
           "Large contingent liabilities"
         ],
         "sector": "Banks",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "debt_equity",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/SBIN/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:30+05:30"
+    },
+    {
+      "ticker": "ITC",
+      "fields": {
+        "revenue_ttm": 76488,
+        "revenue_yoy_pct": -3,
+        "pat_ttm": 20184,
+        "pat_yoy_pct": -1,
+        "eps_ttm": 15.84,
+        "pe_ttm": 17.0,
+        "pb": 4.61,
+        "roe_pct": 29.3,
+        "roce_pct": 38.9,
+        "debt_equity": 0.03,
+        "interest_coverage": 321.25,
+        "promoter_holding_pct": 0.0,
+        "fii_holding_pct": 34.23,
+        "dii_holding_pct": 49.13,
+        "qoq_revenue_trend": "up",
+        "margin_trend": "stable",
+        "latest_quarter": "Q1FY27",
+        "management_notes": [
+          "Diversified FMCG, hotels, paperboards, agri; no promoter group"
+        ],
+        "red_flags": [
+          "Zero promoter holding"
+        ],
+        "sector": "FMCG",
+        "market_cap_bucket": "large"
+      },
+      "unknowns": [
+        "eps_growth_yoy_pct",
+        "promoter_pledge_pct"
+      ],
+      "sources": [
+        "https://www.screener.in/company/ITC/consolidated/"
+      ],
+      "ts": "2026-09-21T22:27:30+05:30"
     },
     {
       "ticker": "BANKBARODA",
@@ -131,29 +173,29 @@
         "promoter_holding_pct": 63.97,
         "fii_holding_pct": 10.14,
         "dii_holding_pct": 18.33,
-        "qoq_revenue_trend": "up",
+        "qoq_revenue_trend": "flat",
         "margin_trend": "stable",
         "latest_quarter": "Q1FY27",
         "management_notes": [
           "Top-5 bank by assets; ~6% deposit share"
         ],
         "red_flags": [
-          "Low interest coverage (Screener cons)",
+          "Low interest coverage",
           "Large contingent liabilities"
         ],
         "sector": "Banks",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "debt_equity",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/BANKBARODA/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:30+05:30"
     },
     {
       "ticker": "PNB",
@@ -177,22 +219,24 @@
           "2nd largest PSU bank by business size"
         ],
         "red_flags": [
-          "Promoter holding decreased over 3 years (-3.07%)",
-          "Low interest coverage"
+          "Low interest coverage",
+          "Low ROE 12.4% over last 3 years",
+          "Large contingent liabilities",
+          "Promoter holding decreased over 3 years (-3.07%)"
         ],
         "sector": "Banks",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "debt_equity",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/PNB/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "CANBK",
@@ -213,25 +257,26 @@
         "margin_trend": "stable",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "GNPA improved to 1.57% in Jun 2026"
+          "Major PSU bank"
         ],
         "red_flags": [
           "Low interest coverage",
+          "Large contingent liabilities",
           "Working capital days increased"
         ],
         "sector": "Banks",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "debt_equity",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/CANBK/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "ONGC",
@@ -254,12 +299,12 @@
         "margin_trend": "compressing",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "India's largest crude oil & gas producer"
+          "India's largest crude oil & gas explorer"
         ],
         "red_flags": [
           "Low ROE 12.7% over last 3 years"
         ],
-        "sector": "Energy",
+        "sector": "Oil & Gas",
         "market_cap_bucket": "large"
       },
       "unknowns": [
@@ -269,7 +314,7 @@
       "sources": [
         "https://www.screener.in/company/ONGC/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "NTPC",
@@ -289,15 +334,13 @@
         "fii_holding_pct": 16.3,
         "dii_holding_pct": 29.44,
         "qoq_revenue_trend": "up",
-        "margin_trend": "stable",
+        "margin_trend": "compressing",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "Largest power generator; ~17% of India's installed capacity"
+          "Largest power generation utility in India"
         ],
-        "red_flags": [
-          "May be capitalizing interest cost (Screener cons)"
-        ],
-        "sector": "Energy",
+        "red_flags": [],
+        "sector": "Power",
         "market_cap_bucket": "large"
       },
       "unknowns": [
@@ -307,7 +350,7 @@
       "sources": [
         "https://www.screener.in/company/NTPC/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "POWERGRID",
@@ -326,16 +369,14 @@
         "promoter_holding_pct": 51.34,
         "fii_holding_pct": 24.33,
         "dii_holding_pct": 20.62,
-        "qoq_revenue_trend": "down",
-        "margin_trend": "stable",
+        "qoq_revenue_trend": "flat",
+        "margin_trend": "compressing",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "India's largest power transmission utility"
+          "Central transmission utility; monopoly-like grid"
         ],
-        "red_flags": [
-          "Poor sales growth 3.35% over 5 years"
-        ],
-        "sector": "Energy",
+        "red_flags": [],
+        "sector": "Power",
         "market_cap_bucket": "large"
       },
       "unknowns": [
@@ -345,7 +386,7 @@
       "sources": [
         "https://www.screener.in/company/POWERGRID/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "COALINDIA",
@@ -383,7 +424,7 @@
       "sources": [
         "https://www.screener.in/company/COALINDIA/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "IOC",
@@ -403,13 +444,13 @@
         "fii_holding_pct": 9.08,
         "dii_holding_pct": 9.52,
         "qoq_revenue_trend": "up",
-        "margin_trend": "compressing",
+        "margin_trend": "stable",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "Maharatna; ~31% of India's refining capacity"
+          "Largest Indian oil marketing company"
         ],
         "red_flags": [],
-        "sector": "Energy",
+        "sector": "Oil & Gas",
         "market_cap_bucket": "large"
       },
       "unknowns": [
@@ -419,7 +460,43 @@
       "sources": [
         "https://www.screener.in/company/IOC/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
+    },
+    {
+      "ticker": "BPCL",
+      "fields": {
+        "revenue_ttm": 493954,
+        "revenue_yoy_pct": 12,
+        "pat_ttm": 17132,
+        "pat_yoy_pct": -12,
+        "eps_ttm": 39.48,
+        "pe_ttm": 8.94,
+        "pb": 1.35,
+        "roe_pct": 28.8,
+        "roce_pct": 25.6,
+        "debt_equity": 0.54,
+        "interest_coverage": 13.95,
+        "promoter_holding_pct": 52.98,
+        "fii_holding_pct": 16.84,
+        "dii_holding_pct": 21.07,
+        "qoq_revenue_trend": "up",
+        "margin_trend": "compressing",
+        "latest_quarter": "Q1FY27",
+        "management_notes": [
+          "Oil marketing Maharatna PSU"
+        ],
+        "red_flags": [],
+        "sector": "Oil & Gas",
+        "market_cap_bucket": "large"
+      },
+      "unknowns": [
+        "eps_growth_yoy_pct",
+        "promoter_pledge_pct"
+      ],
+      "sources": [
+        "https://www.screener.in/company/BPCL/consolidated/"
+      ],
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "IRFC",
@@ -445,21 +522,21 @@
         ],
         "red_flags": [
           "Low interest coverage",
-          "High debtors (5136 days)",
-          "Promoter holding declining"
+          "Low ROE 13.0% over last 3 years",
+          "High debtors (5136 days)"
         ],
         "sector": "Financial Services",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/IRFC/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "RECLTD",
@@ -477,27 +554,27 @@
         "promoter_holding_pct": 52.63,
         "fii_holding_pct": 15.76,
         "dii_holding_pct": 16.98,
-        "qoq_revenue_trend": "down",
+        "qoq_revenue_trend": "flat",
         "margin_trend": "stable",
         "latest_quarter": "Q1FY27",
         "management_notes": [
           "Power-sector NBFC under Ministry of Power"
         ],
         "red_flags": [
-          "Low interest coverage (Screener cons)"
+          "Low interest coverage"
         ],
         "sector": "Financial Services",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/RECLTD/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "PFC",
@@ -515,57 +592,95 @@
         "promoter_holding_pct": 55.99,
         "fii_holding_pct": 20.54,
         "dii_holding_pct": 14.5,
-        "qoq_revenue_trend": "down",
+        "qoq_revenue_trend": "flat",
         "margin_trend": "stable",
         "latest_quarter": "Q1FY27",
         "management_notes": [
           "NBFC-IFC financing Indian power sector"
         ],
         "red_flags": [
-          "Low interest coverage (Screener cons)"
+          "Low interest coverage"
         ],
         "sector": "Financial Services",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/PFC/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
-      "ticker": "BHEL",
+      "ticker": "NMDC",
       "fields": {
-        "revenue_ttm": 35993,
+        "revenue_ttm": 32127,
         "revenue_yoy_pct": 27,
-        "pat_ttm": 2432,
-        "pat_yoy_pct": 739,
-        "eps_ttm": 6.99,
-        "pe_ttm": 62.9,
-        "pb": 5.77,
-        "roe_pct": 6.23,
-        "roce_pct": 9.14,
-        "debt_equity": 0.31,
-        "interest_coverage": 2.61,
-        "promoter_holding_pct": 58.17,
-        "fii_holding_pct": 9.52,
-        "dii_holding_pct": 22.35,
+        "pat_ttm": 7459,
+        "pat_yoy_pct": 14,
+        "eps_ttm": 8.49,
+        "pe_ttm": 9.34,
+        "pb": 2.06,
+        "roe_pct": 23.4,
+        "roce_pct": 27.6,
+        "debt_equity": 0.19,
+        "interest_coverage": 76.53,
+        "promoter_holding_pct": 60.79,
+        "fii_holding_pct": 13.59,
+        "dii_holding_pct": 13.8,
         "qoq_revenue_trend": "down",
+        "margin_trend": "compressing",
+        "latest_quarter": "Q1FY27",
+        "management_notes": [
+          "Largest iron ore producer in India"
+        ],
+        "red_flags": [
+          "Large contingent liabilities",
+          "Working capital days increased"
+        ],
+        "sector": "Metals & Mining",
+        "market_cap_bucket": "large"
+      },
+      "unknowns": [
+        "eps_growth_yoy_pct",
+        "promoter_pledge_pct"
+      ],
+      "sources": [
+        "https://www.screener.in/company/NMDC/consolidated/"
+      ],
+      "ts": "2026-09-21T22:27:31+05:30"
+    },
+    {
+      "ticker": "VEDL",
+      "fields": {
+        "revenue_ttm": 88898,
+        "revenue_yoy_pct": 2,
+        "pat_ttm": 28556,
+        "pat_yoy_pct": 37,
+        "eps_ttm": 50.33,
+        "pe_ttm": 9.48,
+        "pb": 2.05,
+        "roe_pct": 38.2,
+        "roce_pct": 16.1,
+        "debt_equity": 0.66,
+        "interest_coverage": 8.23,
+        "promoter_holding_pct": 54.72,
+        "fii_holding_pct": 15.78,
+        "dii_holding_pct": 10.83,
+        "qoq_revenue_trend": "flat",
         "margin_trend": "expanding",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "Power plant equipment manufacturer; ~53% conventional capacity share"
+          "Diversified metals & mining (Zn, Al, Oil)"
         ],
         "red_flags": [
-          "Trading at 5.77x book",
-          "Low 3Y ROE 3.18%",
-          "Promoter holding -5% over 3Y"
+          "Promoter holding decreased last quarter (-1.66%)",
+          "Large contingent liabilities"
         ],
-        "sector": "Capital Goods",
+        "sector": "Metals & Mining",
         "market_cap_bucket": "large"
       },
       "unknowns": [
@@ -573,86 +688,9 @@
         "promoter_pledge_pct"
       ],
       "sources": [
-        "https://www.screener.in/company/BHEL/consolidated/"
+        "https://www.screener.in/company/VEDL/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
-    },
-    {
-      "ticker": "WIPRO",
-      "fields": {
-        "revenue_ttm": 94968,
-        "revenue_yoy_pct": 6,
-        "pat_ttm": 13285,
-        "pat_yoy_pct": -2,
-        "eps_ttm": 12.79,
-        "pe_ttm": 12.4,
-        "pb": 1.97,
-        "roe_pct": 15.5,
-        "roce_pct": 17.8,
-        "debt_equity": 0.23,
-        "interest_coverage": 12.22,
-        "promoter_holding_pct": 72.59,
-        "fii_holding_pct": 8.85,
-        "dii_holding_pct": 5.22,
-        "qoq_revenue_trend": "up",
-        "margin_trend": "stable",
-        "latest_quarter": "Q1FY27",
-        "management_notes": [
-          "4th largest Indian IT services company"
-        ],
-        "red_flags": [
-          "Poor sales growth 8.38% over 5 years"
-        ],
-        "sector": "IT",
-        "market_cap_bucket": "large"
-      },
-      "unknowns": [
-        "eps_growth_yoy_pct",
-        "promoter_pledge_pct"
-      ],
-      "sources": [
-        "https://www.screener.in/company/WIPRO/consolidated/"
-      ],
-      "ts": "2026-09-21T21:00:00+05:30"
-    },
-    {
-      "ticker": "TATAPOWER",
-      "fields": {
-        "revenue_ttm": 63445,
-        "revenue_yoy_pct": -4,
-        "pat_ttm": 5256,
-        "pat_yoy_pct": -5,
-        "eps_ttm": 12.1,
-        "pe_ttm": 30.0,
-        "pb": 2.96,
-        "roe_pct": 10.2,
-        "roce_pct": 10.5,
-        "debt_equity": 1.93,
-        "interest_coverage": 2.52,
-        "promoter_holding_pct": 46.86,
-        "fii_holding_pct": 10.03,
-        "dii_holding_pct": 18.12,
-        "qoq_revenue_trend": "up",
-        "margin_trend": "stable",
-        "latest_quarter": "Q1FY27",
-        "management_notes": [
-          "Largest vertically-integrated power company in India"
-        ],
-        "red_flags": [
-          "Trading at 2.97x book",
-          "Low 3Y ROE 11.0%"
-        ],
-        "sector": "Energy",
-        "market_cap_bucket": "large"
-      },
-      "unknowns": [
-        "eps_growth_yoy_pct",
-        "promoter_pledge_pct"
-      ],
-      "sources": [
-        "https://www.screener.in/company/TATAPOWER/consolidated/"
-      ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "YESBANK",
@@ -677,7 +715,8 @@
         ],
         "red_flags": [
           "No dividend despite profits",
-          "Low 3Y ROE 5.33%",
+          "Low interest coverage",
+          "Low ROE 5.33% over last 3 years",
           "Large contingent liabilities",
           "Zero promoter holding"
         ],
@@ -685,15 +724,15 @@
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "debt_equity",
         "interest_coverage",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/YESBANK/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:31+05:30"
     },
     {
       "ticker": "IDEA",
@@ -712,68 +751,29 @@
         "margin_trend": "expanding",
         "latest_quarter": "Q1FY27",
         "management_notes": [
-          "Telecom; negative book value; Govt holds ~49%"
+          "Telecom; negative book value; Govt holds large stake"
         ],
         "red_flags": [
           "Negative book value",
           "Low interest coverage",
-          "Promoter holding -24.7% over 3Y",
+          "Promoter holding decreased over 3 years (-24.7%)",
           "Heavy debt"
         ],
         "sector": "Telecom",
         "market_cap_bucket": "large"
       },
       "unknowns": [
-        "eps_growth_yoy_pct",
         "pe_ttm",
         "pb",
         "roe_pct",
         "debt_equity",
+        "eps_growth_yoy_pct",
         "promoter_pledge_pct"
       ],
       "sources": [
         "https://www.screener.in/company/IDEA/consolidated/"
       ],
-      "ts": "2026-09-21T21:00:00+05:30"
-    },
-    {
-      "ticker": "SUZLON",
-      "fields": {
-        "revenue_ttm": 17429,
-        "revenue_yoy_pct": 45,
-        "pat_ttm": 3144,
-        "pat_yoy_pct": 50,
-        "eps_ttm": 2.31,
-        "pe_ttm": 18.7,
-        "pb": 6.22,
-        "roe_pct": 39.7,
-        "roce_pct": 34.2,
-        "debt_equity": 0.06,
-        "interest_coverage": 6.55,
-        "promoter_holding_pct": 11.7,
-        "fii_holding_pct": 24.15,
-        "dii_holding_pct": 11.12,
-        "qoq_revenue_trend": "down",
-        "margin_trend": "stable",
-        "latest_quarter": "Q1FY27",
-        "management_notes": [
-          "Wind turbine manufacturer; almost debt free"
-        ],
-        "red_flags": [
-          "Low promoter holding 11.7%",
-          "No dividend despite profits"
-        ],
-        "sector": "Capital Goods / Renewables",
-        "market_cap_bucket": "large"
-      },
-      "unknowns": [
-        "eps_growth_yoy_pct",
-        "promoter_pledge_pct"
-      ],
-      "sources": [
-        "https://www.screener.in/company/SUZLON/consolidated/"
-      ],
-      "ts": "2026-09-21T21:00:00+05:30"
+      "ts": "2026-09-21T22:27:32+05:30"
     }
   ]
 }
