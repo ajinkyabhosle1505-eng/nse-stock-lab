@@ -153,14 +153,52 @@ export default function LookupPage() {
             ) : null}
           </section>
 
-          <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+          <section className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 space-y-3">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Funda / News (stubs)
+              Funda / News (live scrape)
             </h2>
-            <p className="mt-2 text-sm text-slate-400">{data.funda.note}</p>
-            <p className="mt-1 text-sm text-slate-400">{data.news.note}</p>
-            <p className="mt-2 text-xs text-slate-500">
-              Unknowns: {[...data.funda.unknowns, ...data.news.unknowns].join(", ")}
+            <dl className="grid grid-cols-2 gap-3 text-sm">
+              <Item
+                label="funda_quality"
+                value={String(data.funda.fields.funda_quality ?? "UNKNOWN")}
+              />
+              <Item
+                label="PE / ROE / D-E"
+                value={[
+                  data.funda.fields.pe_ttm != null ? `PE ${data.funda.fields.pe_ttm}` : null,
+                  data.funda.fields.roe_pct != null ? `ROE ${data.funda.fields.roe_pct}` : null,
+                  data.funda.fields.debt_equity != null
+                    ? `D/E ${data.funda.fields.debt_equity}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "UNKNOWN"}
+              />
+            </dl>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-500">Headline</p>
+              <p className="mt-0.5 text-sm text-slate-100">
+                {String(data.news.fields.headline ?? "UNKNOWN")}
+              </p>
+              {data.news.fields.why_for_verdict ? (
+                <p className="mt-1 text-xs text-slate-400">
+                  why: {String(data.news.fields.why_for_verdict)}
+                </p>
+              ) : null}
+              <p className="mt-1 text-[10px] text-slate-500">
+                {String(data.news.fields.confirmation_status ?? "?")} ·{" "}
+                {String(data.news.fields.catalyst_strength ?? "?")} · expiry{" "}
+                {String(data.news.fields.catalyst_expiry ?? "null")}
+              </p>
+            </div>
+            <p className="text-xs text-slate-500">
+              Funda unknowns: {data.funda.unknowns.join(", ") || "—"}
+            </p>
+            <p className="text-xs text-slate-500">
+              News unknowns: {data.news.unknowns.join(", ") || "—"}
+            </p>
+            <p className="text-[10px] text-slate-600">
+              {data.funda.note} · {data.news.note}
             </p>
             <p className="mt-2">
               <span

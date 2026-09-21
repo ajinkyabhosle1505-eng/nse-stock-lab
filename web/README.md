@@ -27,11 +27,12 @@ Prices come **only** from Yahoo (`query1` chart API for `SYMBOL.NS`). Missing va
 
 Normalizes to `PNB.NS`, returns:
 
-- **tech**: `cmp`, `atr_14`, `support_levels`, `resistance_levels`, `structure`, `breakout_state`, `rsi_14`, `price_vs_dma`, `dma_20` / `50` / `200`
-- **funda / news**: thin stubs with `unknowns[]` + note (MVP — no live scrape)
-- **verdict**: risk merge with plan fields `buy_trigger`, `sell_targets[]`, `stop_invalidation`, `time_horizon`
+- **tech**: live Yahoo chart → `cmp`, `atr_14`, `support_levels`, `resistance_levels`, `structure`, `breakout_state`, `trigger_level`, `rsi_14`, `price_vs_dma`, DMAs
+- **funda**: desk scrape `funda/scrape_one.py` → Screener PE/ROE/D-E + `funda_quality` (gaps → `unknowns[]`)
+- **news**: desk scrape `news/scrape_one.py` → Google News RSS headline/summary/`confirmation_status`/`why_for_verdict`/`catalyst_expiry`
+- **verdict**: `mergeVerdict(tech, {budget, risk_pct, funda, news})` — gates rumored-only + funda fail; folds `why_for_verdict`; horizon from `catalyst_expiry`
 
-Optional: `budget_inr`, `risk_pct` (default 10000 / 1).
+Optional: `budget_inr`, `risk_pct` (default 10000 / 1). Never invents numbers/filings.
 
 ### `POST /api/budget-picks`
 
@@ -120,4 +121,4 @@ npx vercel
 - This app is **Next.js only** — do not wire Streamlit into this package.
 - Live prices: Yahoo Finance chart API only (`query1` / `SYMBOL.NS`).
 - Budget is device-local; paper marks are not live — unrealized P&L stays `UNKNOWN` until a mark feed exists.
-- Funda/news live scrapes are intentionally stubbed for MVP.
+- Funda/news: spawned desk Python scrapers (`funda/scrape_one.py`, `news/scrape_one.py`, ~20s timeout); gaps → unknowns[]; never invent numbers.

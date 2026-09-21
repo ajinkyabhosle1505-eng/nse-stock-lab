@@ -4,9 +4,12 @@ import { SEBI_BANNER } from "@/lib/universe";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
-  const symbol = req.nextUrl.searchParams.get("symbol")?.trim();
+  const symbol =
+    req.nextUrl.searchParams.get("symbol")?.trim() ||
+    req.nextUrl.searchParams.get("ticker")?.trim();
   if (!symbol) {
     return NextResponse.json(
       {

@@ -224,6 +224,16 @@ export function computeTech(
     unknowns.push("breakout_level");
   }
 
+  // trigger_level: active breakout hold level, else dma_20 reclaim
+  if (brk.state === "breakout" && brk.level != null) {
+    fields.trigger_level = brk.level;
+  } else if (dma20 != null) {
+    fields.trigger_level = round(dma20);
+  } else {
+    fields.trigger_level = "UNKNOWN";
+    unknowns.push("trigger_level");
+  }
+
   if (fields.atr_14 === "UNKNOWN") unknowns.push("atr_14");
   if (fields.rsi_14 === "UNKNOWN") unknowns.push("rsi_14");
   if (fields.dma_20 === "UNKNOWN") unknowns.push("dma_20");
@@ -255,6 +265,7 @@ export function unknownTech(ticker: string, yahooSymbol: string): TechLane {
       resistance_levels: [],
       structure: "UNKNOWN",
       breakout_state: "UNKNOWN",
+      trigger_level: "UNKNOWN",
       rsi_14: "UNKNOWN",
       price_vs_dma: "UNKNOWN",
       dma_20: "UNKNOWN",
@@ -271,6 +282,7 @@ export function unknownTech(ticker: string, yahooSymbol: string): TechLane {
       "resistance_levels",
       "structure",
       "breakout_state",
+      "trigger_level",
       "rsi_14",
       "price_vs_dma",
       "dma_20",

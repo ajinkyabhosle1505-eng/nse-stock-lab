@@ -102,6 +102,8 @@ export interface TechFields {
   structure: string;
   breakout_state: string;
   breakout_level?: number | "UNKNOWN";
+  /** Nearest reclaim: active breakout_level or dma_20 */
+  trigger_level?: number | "UNKNOWN";
   rsi_14: number | "UNKNOWN";
   price_vs_dma: string;
   dma_20: number | "UNKNOWN";
@@ -132,12 +134,14 @@ export interface LookupResponse {
     fields: Record<string, unknown>;
     unknowns: string[];
     note: string;
+    sources?: string[];
   };
   news: {
     ticker: string;
     fields: Record<string, unknown>;
     unknowns: string[];
     note: string;
+    sources?: string[];
   };
   verdict: Verdict;
 }

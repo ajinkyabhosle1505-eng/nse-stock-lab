@@ -23,6 +23,15 @@ export interface SizeResult {
   reason?: string;
 }
 
+/** Optional funda / news lane blobs (live or stub). */
+export interface LaneStub {
+  ticker?: string;
+  fields?: Record<string, unknown>;
+  unknowns?: string[];
+  sources?: string[];
+  note?: string;
+}
+
 /**
  * risk_inr = budget * (risk_pct/100)
  * per_share = entry - sl
@@ -54,7 +63,6 @@ export function sizePosition(input: SizeInput): SizeResult {
       reason: "shares<1",
     };
   }
-  // Cap by budget notional
   while (shares >= 1 && entry * shares > budget_inr) {
     shares -= 1;
   }
@@ -104,18 +112,13 @@ function deriveLevels(tech: TechLane): {
     targets.push(round(entry + 2 * atr));
     targets.push(round(entry + 3.5 * atr));
   }
-  // Prefer listed resistance if above entry
-  for (const r of tech.fields.resistance_levels || []) {
-    if (r > entry && !targets.includes(r)) {
-      // keep ATR targets as primary; resistance as risk note only
-    }
-  }
   return { entry, sl, targets };
 }
 
 function buyBias(tech: TechLane): {
   favorBuy: boolean;
   holdAvoid: boolean;
+  exceptionalTape: boolean;
   reasons: string[];
   flags: string[];
 } {
@@ -133,10 +136,18 @@ function buyBias(tech: TechLane): {
   const isBreakdown = brk === "breakdown";
   const belowLhLl = pvd === "below" && structure === "LH_LL";
 
+  const exceptionalTape =
+    isBreakout &&
+    pvd === "above" &&
+    rsi != null &&
+    rsi >= 55 &&
+    rsi <= 70;
+
   if (isBreakdown || belowLhLl) {
     return {
       favorBuy: false,
       holdAvoid: true,
+      exceptionalTape: false,
       reasons: [
         isBreakdown
           ? "Tape: breakdown — no fresh long"
@@ -166,11 +177,8 @@ function buyBias(tech: TechLane): {
     );
   }
 
-  // Penny watch: avoid unless exceptional
   if (cmp != null && (cmp < 50 || isPennyWatch(tech.ticker))) {
-    const exceptional =
-      isBreakout && pvd === "above" && rsi != null && rsi >= 55 && rsi <= 70;
-    if (!exceptional) {
+    if (!exceptionalTape) {
       favorBuy = false;
       flags.push("penny_watch");
       reasons.push("Penny / watchlist name — avoid unless exceptional tape");
@@ -185,7 +193,9 @@ function buyBias(tech: TechLane): {
   }
 
   if ((f.resistance_levels || []).length && cmp != null) {
-    const near = f.resistance_levels.filter((r) => r <= cmp * 1.03 && r >= cmp);
+    const near = f.resistance_levels.filter(
+      (r) => r <= cmp * 1.03 && r >= cmp
+    );
     if (near.length) {
       flags.push(
         `Listed resistance tight (${near.join("–")}) — scale / ATR extension`
@@ -193,28 +203,148 @@ function buyBias(tech: TechLane): {
     }
   }
 
-  return { favorBuy, holdAvoid: false, reasons, flags };
+  return { favorBuy, holdAvoid: false, exceptionalTape, reasons, flags };
+}
+
+function strField(
+  fields: Record<string, unknown> | undefined,
+  key: string
+): string | null {
+  if (!fields) return null;
+  const v = fields[key];
+  return typeof v === "string" ? v : null;
+}
+
+function applyFundaNewsGates(
+  funda: LaneStub | null | undefined,
+  news: LaneStub | null | undefined,
+  favorBuy: boolean,
+  exceptionalTape: boolean,
+  reasons: string[],
+  risk_flags: string[]
+): { favorBuy: boolean; forceAvoid: boolean; holdLean: boolean } {
+  let buy = favorBuy;
+  let forceAvoid = false;
+  let holdLean = false;
+
+  const ff = funda?.fields;
+  const quality = strField(ff, "funda_quality");
+
+  if (quality === "fail") {
+    risk_flags.push("funda_quality=fail");
+    if (exceptionalTape) {
+      holdLean = true;
+      buy = false;
+      reasons.push(
+        "Funda: quality=fail — exceptional tape only; hold-lean / no chase"
+      );
+    } else {
+      forceAvoid = true;
+      buy = false;
+      reasons.push("Funda: quality=fail — avoid/hold unless tape exceptional");
+    }
+  } else if (quality === "watch") {
+    risk_flags.push("funda_quality=watch");
+    reasons.push("Funda: quality=watch — size/confidence capped");
+  } else if (quality === "pass") {
+    risk_flags.push("funda_quality=pass");
+    const pe = typeof ff?.pe_ttm === "number" ? ff.pe_ttm : null;
+    const roe = typeof ff?.roe_pct === "number" ? ff.roe_pct : null;
+    const bits = [
+      pe != null ? `PE~${pe}` : null,
+      roe != null ? `ROE~${roe}` : null,
+    ].filter(Boolean);
+    reasons.push(
+      bits.length
+        ? `Funda: quality=pass (${bits.join(", ")})`
+        : "Funda: quality=pass"
+    );
+  } else if (funda?.unknowns?.length) {
+    risk_flags.push("funda_thin");
+  }
+
+  const red = ff?.red_flags;
+  if (Array.isArray(red)) {
+    for (const r of red.slice(0, 3)) {
+      if (typeof r === "string") risk_flags.push(r);
+    }
+  }
+
+  const nf = news?.fields;
+  const conf = strField(nf, "confirmation_status");
+  const strength = strField(nf, "catalyst_strength");
+  const sentiment = strField(nf, "sentiment");
+  const why = strField(nf, "why_for_verdict");
+  const headline = strField(nf, "headline");
+
+  // Rumored-only strong claims → no chase / hold-lean
+  if (conf === "rumored" && (strength === "med" || strength === "high")) {
+    buy = false;
+    holdLean = true;
+    risk_flags.push("news_rumored");
+    reasons.push("News: rumored-only strong claim — no chase / hold-lean");
+  } else if (conf === "confirmed") {
+    reasons.push(
+      `News: confirmed${strength ? ` (${strength})` : ""}${
+        sentiment ? `, sentiment=${sentiment}` : ""
+      }`
+    );
+  } else if (headline) {
+    reasons.push(`News: ${headline.slice(0, 80)}`);
+  }
+
+  if (sentiment === "negative" && conf === "confirmed") {
+    buy = false;
+    holdLean = true;
+    risk_flags.push("news_bear_confirmed");
+    reasons.push("News: confirmed bearish — hold/avoid");
+  }
+
+  if (why) {
+    reasons.push(`News why: ${why}`);
+  }
+
+  return { favorBuy: buy, forceAvoid, holdLean };
+}
+
+function buildBuyTrigger(tech: TechLane, entry: number): number | string {
+  const tl = tech.fields.trigger_level;
+  if (typeof tl === "number") {
+    if (tech.fields.breakout_state === "breakout") {
+      return `Hold above breakout/trigger ${tl} (CMP~${entry})`;
+    }
+    return `Reclaim/hold trigger ${tl}; CMP~${entry}`;
+  }
+  return entry;
+}
+
+function buildTimeHorizon(news: LaneStub | null | undefined): string {
+  const exp = strField(news?.fields, "catalyst_expiry");
+  if (exp === "intraday") return "intraday / 1–2 sessions (catalyst_expiry)";
+  if (exp === "days") return "days (catalyst window)";
+  return "2–6 weeks (swing)";
 }
 
 export interface MergeOpts {
   budget_inr?: number;
   risk_pct?: number;
+  funda?: LaneStub | null;
+  news?: LaneStub | null;
 }
 
 /**
- * Merge live tech into a Verdict with plan fields.
- * Funda/news are thin stubs — risk is tech-led for MVP.
+ * Merge live tech (+ optional funda/news) into a Verdict with plan fields.
+ * Gates: rumored-only strong → hold-lean; funda_quality=fail → avoid/hold
+ * unless tape exceptional; fold why_for_verdict; time_horizon from catalyst_expiry.
  */
-export function mergeVerdict(
-  tech: TechLane,
-  opts: MergeOpts = {}
-): Verdict {
+export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
   const budget_inr = opts.budget_inr ?? 10000;
   const risk_pct = opts.risk_pct ?? 1;
   const cmp = numOrNull(tech.fields.cmp);
   const { entry, sl, targets } = deriveLevels(tech);
   const bias = buyBias(tech);
-  const sector = sectorOf(tech.ticker);
+  const sector =
+    strField(opts.funda?.fields, "sector") || sectorOf(tech.ticker);
   const preferred = isPreferredSector(tech.ticker);
 
   let action: Verdict["action"] = "hold";
@@ -252,25 +382,42 @@ export function mergeVerdict(
     };
   }
 
-  const sized =
-    entry != null && sl != null
-      ? sizePosition({ budget_inr, risk_pct, entry, sl })
-      : null;
+  const gated = applyFundaNewsGates(
+    opts.funda,
+    opts.news,
+    bias.favorBuy,
+    bias.exceptionalTape,
+    reasons,
+    risk_flags
+  );
 
-  if (bias.holdAvoid) {
-    action = bias.flags.includes("breakdown") ? "avoid" : "hold";
+  const sized = sizePosition({ budget_inr, risk_pct, entry, sl });
+
+  if (gated.forceAvoid) {
+    action = "avoid";
     confidence = 5;
-  } else if (bias.favorBuy && sized?.ok) {
+  } else if (bias.holdAvoid) {
+    action = risk_flags.includes("breakdown") ? "avoid" : "hold";
+    confidence = 5;
+  } else if (gated.holdLean) {
+    action = "hold";
+    confidence = 5;
+  } else if (gated.favorBuy && sized.ok) {
     action = "buy";
     confidence = 6;
     if (tech.fields.breakout_state === "breakout") confidence += 1;
     if (tech.fields.price_vs_dma === "above") confidence += 1;
+    if (strField(opts.funda?.fields, "funda_quality") === "pass") {
+      confidence += 1;
+    }
+    if (strField(opts.funda?.fields, "funda_quality") === "watch") {
+      confidence -= 1;
+    }
     if (preferred) {
-      confidence += 0;
       reasons.push(`Sector preference: ${sector}`);
     }
-    confidence = Math.min(9, confidence);
-  } else if (bias.favorBuy && sized && !sized.ok) {
+    confidence = Math.max(1, Math.min(9, confidence));
+  } else if (gated.favorBuy && !sized.ok) {
     action = "hold";
     confidence = 5;
     risk_flags.push(`size_blocked:${sized.reason}`);
@@ -280,20 +427,15 @@ export function mergeVerdict(
     confidence = 4;
   }
 
-  // Prefer PSU/Infra/Banks/Energy — slight confidence nudge already via reasons
-  if (action === "buy" && !preferred && !bias.favorBuy) {
-    // unreachable guard
-  }
-
   let r_r: number | null = null;
-  if (entry != null && sl != null && targets.length) {
+  if (targets.length) {
     const risk = entry - sl;
     const reward = targets[0] - entry;
     if (risk > 0) r_r = round(reward / risk, 2);
   }
 
-  const shares = action === "buy" && sized?.ok ? sized.shares : null;
-  const size_inr = action === "buy" && sized?.ok ? sized.size_inr : null;
+  const shares = action === "buy" && sized.ok ? sized.shares : null;
+  const size_inr = action === "buy" && sized.ok ? sized.size_inr : null;
 
   return {
     ticker: tech.ticker,
@@ -314,10 +456,10 @@ export function mergeVerdict(
     under_1000: cmp < 1000,
     penny_under_50: cmp < 50,
     sector,
-    buy_trigger: entry,
+    buy_trigger: buildBuyTrigger(tech, entry),
     sell_targets: targets,
     stop_invalidation: sl,
-    time_horizon: "2–6 weeks (swing)",
+    time_horizon: buildTimeHorizon(opts.news),
     live: true,
     yahoo_symbol: tech.yahoo_symbol,
   };
@@ -331,5 +473,8 @@ export function pickScore(v: Verdict): number {
   if (v.penny_under_50) s -= 40;
   if (v.r_r != null) s += v.r_r * 5;
   if (v.under_1000) s += 5;
+  if (v.risk_flags?.includes("funda_quality=pass")) s += 8;
+  if (v.risk_flags?.includes("funda_quality=fail")) s -= 50;
+  if (v.risk_flags?.includes("news_rumored")) s -= 20;
   return s;
 }
