@@ -1,0 +1,66 @@
+{
+  "paper": true,
+  "job_id": "multi-2026-09-21",
+  "fills": [
+    {
+      "fillId": "504aef3b-b5e1-4599-9222-5299e35add68",
+      "paper": true,
+      "job_id": "multi-2026-09-21",
+      "as_of": "2026-09-21",
+      "symbol": "PNB",
+      "ticker": "PNB",
+      "side": "buy",
+      "action": "buy",
+      "entry": 118.0,
+      "sl": 112.93,
+      "targets": [
+        122.22,
+        125.39
+      ],
+      "confidence": 7,
+      "confidence_1_10": 7,
+      "suggestedRiskPct": 1.0,
+      "suggested_risk_pct": 1.0,
+      "budgetInr": 10000,
+      "budget_inr": 10000,
+      "qty": 19,
+      "shares": 19,
+      "size_inr": 2242.0,
+      "filledAt": "2026-09-21T21:17:21+05:30",
+      "status": "open",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only."
+    },
+    {
+      "fillId": "b4cf0ea5-32ea-43d1-b885-caa125f85d0d",
+      "paper": true,
+      "job_id": "multi-2026-09-21",
+      "as_of": "2026-09-21",
+      "symbol": "COALINDIA",
+      "ticker": "COALINDIA",
+      "side": "buy",
+      "action": "buy",
+      "entry": 414.7,
+      "sl": 395.09,
+      "targets": [
+        436.3,
+        449.26
+      ],
+      "confidence": 6,
+      "confidence_1_10": 6,
+      "suggestedRiskPct": 1.0,
+      "suggested_risk_pct": 1.0,
+      "budgetInr": 10000,
+      "budget_inr": 10000,
+      "qty": 5,
+      "shares": 5,
+      "size_inr": 2073.5,
+      "filledAt": "2026-09-21T21:17:21+05:30",
+      "status": "open",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only."
+    }
+  ]
+}

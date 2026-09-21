@@ -1,0 +1,20 @@
+{
+  "job_id": "multi-2026-09-21",
+  "budget_inr": 10000,
+  "risk_pct": 1,
+  "as_of": "2026-09-21T21:02:00+05:30",
+  "universe": [
+    "RELIANCE", "TCS",
+    "SBIN", "BANKBARODA", "PNB", "CANBK",
+    "ONGC", "NTPC", "POWERGRID", "COALINDIA", "IOC",
+    "IRFC", "RECLTD", "PFC", "BHEL", "WIPRO", "TATAPOWER",
+    "YESBANK", "IDEA", "SUZLON"
+  ],
+  "yahoo_symbols": [
+    "RELIANCE.NS", "TCS.NS",
+    "SBIN.NS", "BANKBARODA.NS", "PNB.NS", "CANBK.NS",
+    "ONGC.NS", "NTPC.NS", "POWERGRID.NS", "COALINDIA.NS", "IOC.NS",
+    "IRFC.NS", "RECLTD.NS", "PFC.NS", "BHEL.NS", "WIPRO.NS", "TATAPOWER.NS",
+    "YESBANK.NS", "IDEA.NS", "SUZLON.NS"
+  ]
+}

@@ -1,0 +1,124 @@
+{
+  "schema": "stock-lab.paper_ledger.v0",
+  "paper": true,
+  "phase": "1/3",
+  "job_id": "multi-2026-09-21",
+  "as_of": "2026-09-21",
+  "written_at": "2026-09-21T21:16:37+05:30",
+  "budget_inr": 10000,
+  "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+  "note": "Phase-1 paper fills only for multi-2026-09-21 buys (PNB, COALINDIA). Qty from Risk verdict shares. No holds/avoids. Not SEBI advice \u2014 paper only.",
+  "fills": [
+    {
+      "fillId": "e25e234a-1c46-44ff-a2ce-6c6a9c3fade7",
+      "paper": true,
+      "job_id": "multi-2026-09-21",
+      "as_of": "2026-09-21",
+      "symbol": "PNB",
+      "ticker": "PNB",
+      "side": "buy",
+      "action": "buy",
+      "entry": 118.0,
+      "sl": 112.93,
+      "targets": [
+        122.22,
+        125.39
+      ],
+      "confidence": 7,
+      "confidence_1_10": 7,
+      "suggestedRiskPct": 1.0,
+      "suggested_risk_pct": 1.0,
+      "budgetInr": 10000,
+      "budget_inr": 10000,
+      "qty": 19,
+      "shares": 19,
+      "size_inr": 2242.0,
+      "r_r": 0.83,
+      "filledAt": "2026-09-21T21:16:37+05:30",
+      "status": "open",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "mark": null,
+      "mark_note": "No mark feed applied; unrealized stays UNKNOWN. Risk verdict cmp recorded for audit only \u2014 not used as invented live CMP.",
+      "verdict_cmp_audit": 118.0,
+      "sector": "Banks",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "source_verdict": "/workspace/stock-lab/risk/verdicts_multi-2026-09-21.json"
+    },
+    {
+      "fillId": "c409704b-16a6-4557-ad51-5d1f7191abe5",
+      "paper": true,
+      "job_id": "multi-2026-09-21",
+      "as_of": "2026-09-21",
+      "symbol": "COALINDIA",
+      "ticker": "COALINDIA",
+      "side": "buy",
+      "action": "buy",
+      "entry": 414.7,
+      "sl": 395.09,
+      "targets": [
+        436.3,
+        449.26
+      ],
+      "confidence": 6,
+      "confidence_1_10": 6,
+      "suggestedRiskPct": 1.0,
+      "suggested_risk_pct": 1.0,
+      "budgetInr": 10000,
+      "budget_inr": 10000,
+      "qty": 5,
+      "shares": 5,
+      "size_inr": 2073.5,
+      "r_r": 1.1,
+      "filledAt": "2026-09-21T21:16:37+05:30",
+      "status": "open",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "mark": null,
+      "mark_note": "No mark feed applied; unrealized stays UNKNOWN. Risk verdict cmp recorded for audit only \u2014 not used as invented live CMP.",
+      "verdict_cmp_audit": 414.7,
+      "sector": "Energy",
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+      "source_verdict": "/workspace/stock-lab/risk/verdicts_multi-2026-09-21.json"
+    }
+  ],
+  "positions": [
+    {
+      "symbol": "PNB",
+      "qty": 19,
+      "entry": 118.0,
+      "sl": 112.93,
+      "targets": [
+        122.22,
+        125.39
+      ],
+      "status": "open",
+      "fillId": "e25e234a-1c46-44ff-a2ce-6c6a9c3fade7",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "paper": true
+    },
+    {
+      "symbol": "COALINDIA",
+      "qty": 5,
+      "entry": 414.7,
+      "sl": 395.09,
+      "targets": [
+        436.3,
+        449.26
+      ],
+      "status": "open",
+      "fillId": "c409704b-16a6-4557-ad51-5d1f7191abe5",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "paper": true
+    }
+  ],
+  "summary": {
+    "open_positions": 2,
+    "notional_inr": 4315.5,
+    "allocated_size_inr": 4315.5,
+    "realizedPnl": 0.0,
+    "unrealizedPnl": "UNKNOWN"
+  }
+}

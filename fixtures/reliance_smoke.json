@@ -1,0 +1,102 @@
+{
+  "desk_job": {
+    "job_id": "smoke-reliance-2026-09-21",
+    "budget_inr": 10000,
+    "universe": ["RELIANCE"],
+    "risk_pct": 1,
+    "as_of": "2026-09-21T20:52:00+05:30"
+  },
+  "market_overview": {
+    "indices_note": "Sensex +564 to ~74,859; Nifty +68 to ~23,414 — bounce after six weekly declines; bargain buying + softer crude.",
+    "global_cues": ["Brent ~$101 (-2%+) easing oil drag", "Geopolitics (Iran/US) still a risk overlay"],
+    "policy_watch": [],
+    "sector_flows": ["IT/pharma/select heavyweights bid; telecom (Airtel) lagged"]
+  },
+  "lanes": {
+    "tech": {
+      "ticker": "RELIANCE",
+      "fields": {
+        "cmp": 1247.4,
+        "atr_14": 19.81,
+        "support_levels": [1226.4],
+        "resistance_levels": [1328.0, 1328.6],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 40.36,
+        "price_vs_dma": "below",
+        "dma_20": 1278.66,
+        "dma_50": 1294.41,
+        "dma_200": 1369.35,
+        "timeframe": "1D"
+      },
+      "unknowns": ["breakout_level"],
+      "sources": ["yfinance:RELIANCE.NS:history(1y,1d)"],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    "funda": {
+      "ticker": "RELIANCE",
+      "fields": {
+        "revenue_ttm": 1123055,
+        "pat_ttm": 88167,
+        "eps_ttm": 55.22,
+        "pe_ttm": 22.4,
+        "roe_pct": 8.91,
+        "debt_equity": 0.45,
+        "red_flags": ["OPM slipped to ~15% in recent quarters vs ~17–18% prior"],
+        "sector": "Energy",
+        "market_cap_bucket": "large",
+        "latest_quarter": "Q1FY27"
+      },
+      "unknowns": ["promoter_pledge_pct", "eps_growth_yoy_pct"],
+      "sources": [
+        "https://www.screener.in/company/RELIANCE/consolidated/",
+        "https://www.ril.com/sites/default/files/2026-07/SHP30062026.pdf"
+      ],
+      "ts": "2026-09-21T20:51:00+05:30"
+    },
+    "news": {
+      "ticker": "RELIANCE",
+      "fields": {
+        "headline": "RIL allots ₹12,000 Cr unsecured NCDs (PPD Series Q) at 7.47%",
+        "sentiment": "mixed",
+        "confirmation_status": "confirmed",
+        "catalyst_strength": "med",
+        "why_for_verdict": "Confirmed large AAA NCD raise = funding flexibility; conference day is engagement not UPSI; Jio IPO timing still rumored — don’t treat as priced catalyst.",
+        "impact_horizon": "near_term"
+      },
+      "unknowns": ["insider_side"],
+      "sources": [
+        "https://www.angelone.in/news/stocks/reliance-industries-share-price-in-focus-allots-12-000-crore-worth-of-ncds-via-private-placement"
+      ],
+      "ts": "2026-09-21T20:52:00+05:30"
+    }
+  },
+  "verdicts": [
+    {
+      "ticker": "RELIANCE",
+      "action": "hold",
+      "confidence_1_10": 7,
+      "entry": null,
+      "sl": null,
+      "targets": [],
+      "size_inr": 0,
+      "shares": null,
+      "r_r": null,
+      "reasons": [
+        "Tape: LH_LL, CMP 1247.4 below 20/50/200 DMA, RSI ~40, no breakout — no long structure",
+        "Funda: Energy large-cap, D/E 0.45 OK, but ROE ~9%, margins compressing, PAT YoY flat",
+        "News: confirmed ₹12,000 Cr AAA NCD = funding flexibility, mixed not bullish; Jio IPO timing still rumored — not a priced catalyst"
+      ],
+      "risk_flags": [
+        "Price under all key DMAs",
+        "Lower-high / lower-low structure",
+        "OPM / margin compression",
+        "promoter_pledge_pct UNKNOWN",
+        "Fresh leverage via large NCD (AAA mitigates credit risk, not equity momentum)"
+      ],
+      "avoids_note": "Skip fresh longs until structure flips (HH_HL or reclaim of dma_20 ~1279) with volume; watch 1226.4 support — break weakens further",
+      "insufficient_data": false,
+      "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell."
+    }
+  ]
+}

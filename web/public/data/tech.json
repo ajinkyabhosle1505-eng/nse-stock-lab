@@ -1,0 +1,640 @@
+{
+  "job_id": "multi-2026-09-21",
+  "lane": "tech",
+  "as_of": "2026-09-21",
+  "count": 20,
+  "ok": 20,
+  "results": [
+    {
+      "ticker": "RELIANCE",
+      "fields": {
+        "cmp": 1247.4,
+        "atr_14": 19.81,
+        "support_levels": [
+          1226.4
+        ],
+        "resistance_levels": [
+          1322.0,
+          1333.0
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 40.36,
+        "price_vs_dma": "below",
+        "dma_20": 1278.66,
+        "dma_50": 1294.41,
+        "dma_200": 1369.35,
+        "volume_vs_avg_20d": 0.9,
+        "price_bucket": "over_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:RELIANCE.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "TCS",
+      "fields": {
+        "cmp": 2128.7,
+        "atr_14": 62.39,
+        "support_levels": [
+          2105.0,
+          2005.01
+        ],
+        "resistance_levels": [
+          2283.4,
+          2323.0
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 35.79,
+        "price_vs_dma": "below",
+        "dma_20": 2254.99,
+        "dma_50": 2299.17,
+        "dma_200": 2504.73,
+        "volume_vs_avg_20d": 0.82,
+        "price_bucket": "over_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:TCS.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "SBIN",
+      "fields": {
+        "cmp": 996.0,
+        "atr_14": 15.34,
+        "support_levels": [
+          992.4,
+          968.0
+        ],
+        "resistance_levels": [
+          1060.0,
+          1097.2
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 41.8,
+        "price_vs_dma": "below",
+        "dma_20": 1015.06,
+        "dma_50": 1033.46,
+        "dma_200": 1031.73,
+        "volume_vs_avg_20d": 0.51,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:SBIN.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "BANKBARODA",
+      "fields": {
+        "cmp": 233.64,
+        "atr_14": 3.77,
+        "support_levels": [
+          232.3
+        ],
+        "resistance_levels": [
+          242.5,
+          251.0
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 40.3,
+        "price_vs_dma": "below",
+        "dma_20": 237.67,
+        "dma_50": 242.83,
+        "dma_200": 266.39,
+        "volume_vs_avg_20d": 0.61,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:BANKBARODA.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "PNB",
+      "fields": {
+        "cmp": 118.0,
+        "atr_14": 2.11,
+        "support_levels": [
+          115.0,
+          113.16
+        ],
+        "resistance_levels": [
+          118.2,
+          119.5
+        ],
+        "structure": "unclear",
+        "breakout_state": "breakout",
+        "breakout_level": 117.27,
+        "rsi_14": 59.12,
+        "price_vs_dma": "above",
+        "dma_20": 116.2,
+        "dma_50": 114.26,
+        "dma_200": 112.32,
+        "volume_vs_avg_20d": 0.69,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [],
+      "sources": [
+        "yfinance:PNB.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "CANBK",
+      "fields": {
+        "cmp": 123.7,
+        "atr_14": 1.92,
+        "support_levels": [
+          123.66,
+          122.37
+        ],
+        "resistance_levels": [
+          127.6,
+          128.69
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 40.87,
+        "price_vs_dma": "below",
+        "dma_20": 125.36,
+        "dma_50": 126.95,
+        "dma_200": 134.2,
+        "volume_vs_avg_20d": 0.44,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:CANBK.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "ONGC",
+      "fields": {
+        "cmp": 235.63,
+        "atr_14": 4.14,
+        "support_levels": [
+          235.5,
+          232.22
+        ],
+        "resistance_levels": [
+          237.27,
+          241.16
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 50.3,
+        "price_vs_dma": "mixed",
+        "dma_20": 233.93,
+        "dma_50": 238.26,
+        "dma_200": 254.72,
+        "volume_vs_avg_20d": 0.6,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:ONGC.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "NTPC",
+      "fields": {
+        "cmp": 326.4,
+        "atr_14": 4.78,
+        "support_levels": [
+          323.65,
+          320.04
+        ],
+        "resistance_levels": [
+          336.22,
+          340.57
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 41.37,
+        "price_vs_dma": "below",
+        "dma_20": 329.88,
+        "dma_50": 335.97,
+        "dma_200": 354.29,
+        "volume_vs_avg_20d": 0.65,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:NTPC.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "POWERGRID",
+      "fields": {
+        "cmp": 266.1,
+        "atr_14": 4.51,
+        "support_levels": [
+          263.0
+        ],
+        "resistance_levels": [
+          270.75,
+          274.05
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 46.49,
+        "price_vs_dma": "mixed",
+        "dma_20": 266.37,
+        "dma_50": 273.38,
+        "dma_200": 283.82,
+        "volume_vs_avg_20d": 0.82,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:POWERGRID.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "COALINDIA",
+      "fields": {
+        "cmp": 414.7,
+        "atr_14": 8.64,
+        "support_levels": [
+          414.16,
+          395.88
+        ],
+        "resistance_levels": [
+          422.44,
+          432.0
+        ],
+        "structure": "HH_HL",
+        "breakout_state": "none",
+        "rsi_14": 50.41,
+        "price_vs_dma": "mixed",
+        "dma_20": 413.17,
+        "dma_50": 410.63,
+        "dma_200": 421.35,
+        "volume_vs_avg_20d": 0.33,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:COALINDIA.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "IOC",
+      "fields": {
+        "cmp": 136.53,
+        "atr_14": 2.17,
+        "support_levels": [
+          135.57,
+          134.32
+        ],
+        "resistance_levels": [
+          139.48,
+          140.85
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 49.92,
+        "price_vs_dma": "mixed",
+        "dma_20": 136.3,
+        "dma_50": 138.18,
+        "dma_200": 147.35,
+        "volume_vs_avg_20d": 1.2,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:IOC.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "IRFC",
+      "fields": {
+        "cmp": 80.22,
+        "atr_14": 1.44,
+        "support_levels": [
+          78.95,
+          78.16
+        ],
+        "resistance_levels": [
+          83.95,
+          85.7
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 35.38,
+        "price_vs_dma": "below",
+        "dma_20": 82.14,
+        "dma_50": 85.67,
+        "dma_200": 99.93,
+        "volume_vs_avg_20d": 0.7,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:IRFC.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "RECLTD",
+      "fields": {
+        "cmp": 310.2,
+        "atr_14": 5.05,
+        "support_levels": [
+          308.5
+        ],
+        "resistance_levels": [
+          315.5,
+          321.4
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 35.6,
+        "price_vs_dma": "below",
+        "dma_20": 315.69,
+        "dma_50": 336.84,
+        "dma_200": 342.1,
+        "volume_vs_avg_20d": 0.77,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:RECLTD.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "PFC",
+      "fields": {
+        "cmp": 344.75,
+        "atr_14": 6.13,
+        "support_levels": [
+          336.3
+        ],
+        "resistance_levels": [
+          359.15,
+          363.07
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 36.16,
+        "price_vs_dma": "below",
+        "dma_20": 350.16,
+        "dma_50": 376.72,
+        "dma_200": 392.57,
+        "volume_vs_avg_20d": 1.12,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:PFC.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "BHEL",
+      "fields": {
+        "cmp": 433.4,
+        "atr_14": 11.62,
+        "support_levels": [
+          417.35,
+          410.6
+        ],
+        "resistance_levels": [
+          435.95,
+          442.65
+        ],
+        "structure": "HH_HL",
+        "breakout_state": "none",
+        "rsi_14": 54.85,
+        "price_vs_dma": "above",
+        "dma_20": 427.58,
+        "dma_50": 419.58,
+        "dma_200": 342.28,
+        "volume_vs_avg_20d": 0.78,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:BHEL.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "WIPRO",
+      "fields": {
+        "cmp": 164.55,
+        "atr_14": 3.37,
+        "support_levels": [
+          163.3
+        ],
+        "resistance_levels": [
+          173.35,
+          176.13
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "breakdown",
+        "breakout_level": 166.3,
+        "rsi_14": 32.44,
+        "price_vs_dma": "below",
+        "dma_20": 172.86,
+        "dma_50": 177.5,
+        "dma_200": 201.26,
+        "volume_vs_avg_20d": 0.94,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [],
+      "sources": [
+        "yfinance:WIPRO.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "TATAPOWER",
+      "fields": {
+        "cmp": 367.15,
+        "atr_14": 8.26,
+        "support_levels": [
+          362.25,
+          347.0
+        ],
+        "resistance_levels": [
+          370.75,
+          373.7
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 48.99,
+        "price_vs_dma": "mixed",
+        "dma_20": 363.28,
+        "dma_50": 372.62,
+        "dma_200": 385.64,
+        "volume_vs_avg_20d": 0.56,
+        "price_bucket": "under_1000",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:TATAPOWER.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "YESBANK",
+      "fields": {
+        "cmp": 23.17,
+        "atr_14": 0.53,
+        "support_levels": [
+          22.71,
+          22.46
+        ],
+        "resistance_levels": [
+          23.48,
+          23.75
+        ],
+        "structure": "unclear",
+        "breakout_state": "none",
+        "rsi_14": 54.48,
+        "price_vs_dma": "above",
+        "dma_20": 22.67,
+        "dma_50": 22.84,
+        "dma_200": 21.87,
+        "volume_vs_avg_20d": 0.75,
+        "price_bucket": "penny_under_50",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:YESBANK.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "IDEA",
+      "fields": {
+        "cmp": 13.84,
+        "atr_14": 0.47,
+        "support_levels": [
+          13.76,
+          12.76
+        ],
+        "resistance_levels": [
+          14.31,
+          15.37
+        ],
+        "structure": "HH_HL",
+        "breakout_state": "breakdown",
+        "breakout_level": 13.92,
+        "rsi_14": 41.47,
+        "price_vs_dma": "mixed",
+        "dma_20": 14.72,
+        "dma_50": 13.92,
+        "dma_200": 12.17,
+        "volume_vs_avg_20d": 0.72,
+        "price_bucket": "penny_under_50",
+        "timeframe": "1D"
+      },
+      "unknowns": [],
+      "sources": [
+        "yfinance:IDEA.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    },
+    {
+      "ticker": "SUZLON",
+      "fields": {
+        "cmp": 43.34,
+        "atr_14": 1.04,
+        "support_levels": [
+          42.15,
+          41.76
+        ],
+        "resistance_levels": [
+          46.4,
+          47.52
+        ],
+        "structure": "LH_LL",
+        "breakout_state": "none",
+        "rsi_14": 33.96,
+        "price_vs_dma": "below",
+        "dma_20": 45.06,
+        "dma_50": 47.6,
+        "dma_200": 49.66,
+        "volume_vs_avg_20d": 0.66,
+        "price_bucket": "penny_under_50",
+        "timeframe": "1D"
+      },
+      "unknowns": [
+        "breakout_level"
+      ],
+      "sources": [
+        "yfinance:SUZLON.NS:history(1y,1d)"
+      ],
+      "ts": "2026-09-21T00:00:00+05:30"
+    }
+  ]
+}

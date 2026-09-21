@@ -1,0 +1,18 @@
+{
+  "schema": "stock-lab.paper_snapshot.v0",
+  "paper": true,
+  "phase": "1/3",
+  "job_id": "multi-2026-09-21",
+  "as_of": "2026-09-21",
+  "written_at": "2026-09-21T21:17:33+05:30",
+  "budget_inr": 10000,
+  "suggested_risk_pct": 1.0,
+  "open_positions": 2,
+  "notional_inr": 4315.5,
+  "allocated_size_inr": 4315.5,
+  "realizedPnl": 0.0,
+  "unrealizedPnl": "UNKNOWN",
+  "mtm_note": "No mark feed \u2014 unrealizedPnl UNKNOWN. Never invent CMP.",
+  "api": "http://127.0.0.1:8787",
+  "sebi_banner": "Not SEBI-registered advice. Paper / research only."
+}

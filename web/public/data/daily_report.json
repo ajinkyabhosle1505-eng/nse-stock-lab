@@ -1,0 +1,527 @@
+{
+  "report_id": "daily-multi-2026-09-21",
+  "as_of": "2026-09-21",
+  "budget_inr": 10000,
+  "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+  "sections": {
+    "1_market_overview": {
+      "indices_note": "21 Sep 2026 IST: Sensex +564.03 pts (+0.76%) to 74,858.99; Nifty +67.90 pts (+0.29%) to 23,414.30 after six consecutive weekly declines; bargain buying + softer crude aided heavyweights. Sectorally pharma/FMCG/realty bid; metal and PSU bank softer intraday in some wires.",
+      "global_cues": [
+        "Brent eased ~2.3\u20132.7% to ~$101.1\u2013$101.9/bbl as Saudi supply-disruption fears cooled (still >$100)",
+        "Geopolitics overlay: US\u2013Iran rhetoric and UN week diplomacy hopes; Middle East shipping/Houthi risk remains",
+        "Asia closed firmer (Nikkei, Hang Seng, KOSPI higher per domestic wrap)",
+        "US 10Y yield softer in local market notes; India 10Y near ~7.06%"
+      ],
+      "policy_watch": [
+        "UFBU nationwide bank strike 28\u201330 Sep 2026 (branch disruption risk; digital/ATM buffers)",
+        "Ongoing energy-security focus (Samudra Manthan offshore; gas pipeline approvals)",
+        "SEBI sandbox tokenised bonds (REC pilot) as capital-markets innovation watch"
+      ],
+      "sector_flows": [
+        "IT: selective deal flow (TCS Aareal; Wipro ABB renew) vs softer index days",
+        "PSU banks: strike overhang + capital market activity (Canara AT1; PNB EMTN)",
+        "Energy/power: IOC pipeline board nod; NTPC RE COD; POWERGRID bond approval; coal stock stress narrative",
+        "Renewables OEMs: Suzlon Ayana 200 MW order; Tata Power captive solar COD"
+      ]
+    },
+    "2_top10_under_1000": {
+      "items": [
+        {
+          "ticker": "PNB",
+          "cmp": 118.0,
+          "action": "buy",
+          "confidence_1_10": 7,
+          "entry": 118.0,
+          "sl": 112.93,
+          "targets": [
+            122.22,
+            125.39
+          ],
+          "size_inr": 2242.0,
+          "shares": 19,
+          "r_r": 0.83
+        },
+        {
+          "ticker": "COALINDIA",
+          "cmp": 414.7,
+          "action": "buy",
+          "confidence_1_10": 6,
+          "entry": 414.7,
+          "sl": 395.09,
+          "targets": [
+            436.3,
+            449.26
+          ],
+          "size_inr": 2073.5,
+          "shares": 5,
+          "r_r": 1.1
+        }
+      ]
+    },
+    "3_deep_dive_top3": {
+      "items": [
+        {
+          "ticker": "PNB",
+          "verdict": {
+            "ticker": "PNB",
+            "action": "buy",
+            "confidence_1_10": 7,
+            "entry": 118.0,
+            "sl": 112.93,
+            "targets": [
+              122.22,
+              125.39
+            ],
+            "size_inr": 2242.0,
+            "shares": 19,
+            "r_r": 0.83,
+            "reasons": [
+              "Tape: breakout, price_vs_dma=above, RSI~59 \u2014 only clear breakout in this universe",
+              "Funda: PSU Bank, PE~6.1, ROE~13, margins stable",
+              "News: confirmed MTN platform / IG-style ratings \u2014 funding optionality (med)",
+              "Sector preference: Banks / large"
+            ],
+            "risk_flags": [
+              "Post-breakout listed resistance very tight (118.2\u2013119.5) \u2014 use ATR extension targets",
+              "debt_equity UNKNOWN (bank)",
+              "promoter_pledge_pct UNKNOWN",
+              "Promoter holding down over 3Y"
+            ],
+            "avoids_note": null,
+            "insufficient_data": false,
+            "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+            "cmp": 118.0,
+            "under_1000": true,
+            "penny_under_50": false,
+            "sector": "Banks"
+          },
+          "tech": {
+            "ticker": "PNB",
+            "fields": {
+              "cmp": 118.0,
+              "atr_14": 2.11,
+              "support_levels": [
+                115.0,
+                113.16
+              ],
+              "resistance_levels": [
+                118.2,
+                119.5
+              ],
+              "structure": "unclear",
+              "breakout_state": "breakout",
+              "breakout_level": 117.27,
+              "rsi_14": 59.12,
+              "price_vs_dma": "above",
+              "dma_20": 116.2,
+              "dma_50": 114.26,
+              "dma_200": 112.32,
+              "volume_vs_avg_20d": 0.69,
+              "price_bucket": "under_1000",
+              "timeframe": "1D"
+            },
+            "unknowns": [],
+            "sources": [
+              "yfinance:PNB.NS:history(1y,1d)"
+            ],
+            "ts": "2026-09-21T00:00:00+05:30"
+          },
+          "funda": {
+            "ticker": "PNB",
+            "fields": {
+              "revenue_ttm": 131789,
+              "revenue_yoy_pct": 3,
+              "pat_ttm": 22134,
+              "pat_yoy_pct": 33,
+              "eps_ttm": 19.22,
+              "pe_ttm": 6.14,
+              "pb": 0.87,
+              "roe_pct": 13.0,
+              "roce_pct": 6.13,
+              "promoter_holding_pct": 70.08,
+              "fii_holding_pct": 5.93,
+              "dii_holding_pct": 16.06,
+              "qoq_revenue_trend": "up",
+              "margin_trend": "stable",
+              "latest_quarter": "Q1FY27",
+              "management_notes": [
+                "2nd largest PSU bank by business size"
+              ],
+              "red_flags": [
+                "Promoter holding decreased over 3 years (-3.07%)",
+                "Low interest coverage"
+              ],
+              "sector": "Banks",
+              "market_cap_bucket": "large"
+            },
+            "unknowns": [
+              "eps_growth_yoy_pct",
+              "debt_equity",
+              "interest_coverage",
+              "promoter_pledge_pct"
+            ],
+            "sources": [
+              "https://www.screener.in/company/PNB/consolidated/"
+            ],
+            "ts": "2026-09-21T21:00:00+05:30"
+          },
+          "news": {
+            "ticker": "PNB",
+            "fields": {
+              "headline": "PNB establishes $1.5 bn EMTN programme; Moody\u2019s/Fitch/CareEdge ratings assigned mid-Sep",
+              "summary": "PNB informed exchanges that its USD 1.5 billion Euro Medium Term Note programme (set up 16 Sep 2026) received Moody\u2019s (P)Baa3, Fitch BBB- and CareEdge BBB+/Stable on 17 Sep, disclosed 18 Sep. No tranche issuance yet. Bank also flagged possible disruption around UFBU strike dates.",
+              "event_type": "deal",
+              "sentiment": "bull",
+              "confidence_news": 8,
+              "confirmation_status": "confirmed",
+              "tickers": [
+                "PNB"
+              ],
+              "relevance": "primary",
+              "impact_horizon": "medium",
+              "catalyst_strength": "med",
+              "sectors": [
+                "banks",
+                "PSU_banks"
+              ],
+              "macro_tags": [
+                "funding",
+                "offshore_bonds"
+              ],
+              "insider_side": null,
+              "deal_value_inr": null,
+              "as_of_ist": "2026-09-21T12:00:00+05:30",
+              "why_for_verdict": "Confirmed MTN platform and investment-grade-style ratings open FCY funding optionality; actual raise still pending."
+            },
+            "unknowns": [
+              "No EMTN tranche priced yet"
+            ],
+            "sources": [
+              "https://www.psuconnect.in/bank-news/pnb-gets-ratings-from-moody-fitch-careedge-for-1-5-billion-mtn-programme",
+              "https://www.angelone.in/news/stocks/pnb-share-price-in-focus-establishes-1-50-billion-euro-medium-term-note-programme"
+            ],
+            "ts": "2026-09-21T21:10:00+05:30"
+          }
+        },
+        {
+          "ticker": "COALINDIA",
+          "verdict": {
+            "ticker": "COALINDIA",
+            "action": "buy",
+            "confidence_1_10": 6,
+            "entry": 414.7,
+            "sl": 395.09,
+            "targets": [
+              436.3,
+              449.26
+            ],
+            "size_inr": 2073.5,
+            "shares": 5,
+            "r_r": 1.1,
+            "reasons": [
+              "Tape: HH_HL, RSI~50, mixed vs DMAs \u2014 constructive not extended",
+              "Funda: Energy PSU, PE~8.2, ROE~28 strong, low D/E 0.12",
+              "News: sector coal logistics stress \u2014 mixed, not a company deal catalyst",
+              "Sector preference: Energy / large",
+              "R/R to ATR-T1 1.1 after stretch; listed 422 is first scale-out"
+            ],
+            "risk_flags": [
+              "Listed resistance close (422\u2013432); T1 uses 2.5\u00d7ATR stretch \u2014 trim if rejected at 422",
+              "Margin trend compressing",
+              "Promoter holding -2% last quarter",
+              "promoter_pledge_pct UNKNOWN",
+              "Sector logistics/offtake risk"
+            ],
+            "avoids_note": null,
+            "insufficient_data": false,
+            "sebi_banner": "Not SEBI-registered advice. Paper / research only. Past or hypothetical levels are not a recommendation to buy or sell.",
+            "cmp": 414.7,
+            "under_1000": true,
+            "penny_under_50": false,
+            "sector": "Energy"
+          },
+          "tech": {
+            "ticker": "COALINDIA",
+            "fields": {
+              "cmp": 414.7,
+              "atr_14": 8.64,
+              "support_levels": [
+                414.16,
+                395.88
+              ],
+              "resistance_levels": [
+                422.44,
+                432.0
+              ],
+              "structure": "HH_HL",
+              "breakout_state": "none",
+              "rsi_14": 50.41,
+              "price_vs_dma": "mixed",
+              "dma_20": 413.17,
+              "dma_50": 410.63,
+              "dma_200": 421.35,
+              "volume_vs_avg_20d": 0.33,
+              "price_bucket": "under_1000",
+              "timeframe": "1D"
+            },
+            "unknowns": [
+              "breakout_level"
+            ],
+            "sources": [
+              "yfinance:COALINDIA.NS:history(1y,1d)"
+            ],
+            "ts": "2026-09-21T00:00:00+05:30"
+          },
+          "funda": {
+            "ticker": "COALINDIA",
+            "fields": {
+              "revenue_ttm": 157856,
+              "revenue_yoy_pct": 6,
+              "pat_ttm": 31186,
+              "pat_yoy_pct": -6,
+              "eps_ttm": 50.63,
+              "pe_ttm": 8.15,
+              "pb": 2.15,
+              "roe_pct": 28.2,
+              "roce_pct": 35.0,
+              "debt_equity": 0.12,
+              "interest_coverage": 30.57,
+              "promoter_holding_pct": 61.13,
+              "fii_holding_pct": 10.37,
+              "dii_holding_pct": 22.2,
+              "qoq_revenue_trend": "flat",
+              "margin_trend": "compressing",
+              "latest_quarter": "Q1FY27",
+              "management_notes": [
+                "Maharatna coal mining PSU"
+              ],
+              "red_flags": [
+                "Promoter holding decreased last quarter (-2.00%)"
+              ],
+              "sector": "Energy",
+              "market_cap_bucket": "large"
+            },
+            "unknowns": [
+              "eps_growth_yoy_pct",
+              "promoter_pledge_pct"
+            ],
+            "sources": [
+              "https://www.screener.in/company/COALINDIA/consolidated/"
+            ],
+            "ts": "2026-09-21T21:00:00+05:30"
+          },
+          "news": {
+            "ticker": "COALINDIA",
+            "fields": {
+              "headline": "Reuters: ~40% of India\u2019s coal plants at critically low fuel stocks as of mid-Sep",
+              "summary": "Reuters (21 Sep 2026) reported 74 coal-fired plants with critically low stocks amid monsoon/logistics strains, even as Coal India has highlighted monsoon supply efforts and higher Apr\u2013Aug dispatches in other coverage. Narrative is sector/fuel-security overlay rather than a CIL-specific order win.",
+              "event_type": "sector",
+              "sentiment": "mixed",
+              "confidence_news": 7,
+              "confirmation_status": "confirmed",
+              "tickers": [
+                "COALINDIA"
+              ],
+              "relevance": "sector_only",
+              "impact_horizon": "near_term",
+              "catalyst_strength": "med",
+              "sectors": [
+                "mining",
+                "power",
+                "PSU_energy"
+              ],
+              "macro_tags": [
+                "coal_stocks",
+                "logistics",
+                "monsoon"
+              ],
+              "insider_side": null,
+              "deal_value_inr": null,
+              "as_of_ist": "2026-09-21T18:00:00+05:30",
+              "why_for_verdict": "Confirmed sector stress can lift offtake urgency for CIL but also flags logistics risk; not a company deal catalyst."
+            },
+            "unknowns": [
+              "Plant-level stock data attributed to CEA-style datasets via Reuters; no CIL price guidance found"
+            ],
+            "sources": [
+              "https://www.reuters.com/business/energy/nearly-40-indias-coal-power-plants-running-critically-low-fuel-data-show-2026-09-21/",
+              "https://indianpsu.com/coal-india-keeps-power-plants-fuelled-through-monsoon/"
+            ],
+            "ts": "2026-09-21T21:10:00+05:30"
+          }
+        }
+      ]
+    },
+    "4_five_avoids": {
+      "items": [
+        {
+          "ticker": "IDEA",
+          "kind": "avoid",
+          "confidence_1_10": 8,
+          "note": "Avoid: breakdown + negative book / heavy red_flags + catalyst only rumored; Tape: structure=HH_HL, breakout_state=breakdown, price_vs_dma=mixed, RSI=41.47; News: sentiment=mixed, confirmation=rumored, strength=med; News why: Material if closed, but status is rumored/in-principle only\u2014strictly not confirmed; high binary risk.",
+          "risk_flags": [
+            "Tape breakdown",
+            "Negative book / PE ROE D-E UNKNOWN",
+            "Promoter holding -24.7% over 3Y",
+            "News confirmation_status=rumored",
+            "promoter_pledge_pct UNKNOWN",
+            "Negative book value",
+            "Low interest coverage",
+            "Promoter holding -24.7% over 3Y"
+          ]
+        },
+        {
+          "ticker": "WIPRO",
+          "kind": "avoid",
+          "confidence_1_10": 8,
+          "note": "Avoid: tape breakdown under DMAs; funda sales growth weak; Tape: structure=LH_LL, breakout_state=breakdown, price_vs_dma=below, RSI=32.44; News: sentiment=bull, confirmation=confirmed, strength=low; News why: Confirmed renewal with industrial major; low strength because TCV undisclosed and already in prior bookings narrative.",
+          "risk_flags": [
+            "Breakdown",
+            "price_vs_dma=below",
+            "RSI~32",
+            "Poor 5Y sales growth",
+            "promoter_pledge_pct UNKNOWN",
+            "Poor sales growth 8.38% over 5 years"
+          ]
+        },
+        {
+          "ticker": "BHEL",
+          "kind": "avoid",
+          "confidence_1_10": 7,
+          "note": "Avoid: HH_HL tape but rich PE~63 / weak ROE \u2014 valuation veto on fresh long; Tape: structure=HH_HL, breakout_state=none, price_vs_dma=above, RSI=54.85; News: sentiment=bull, confirmation=confirmed, strength=med; News why: Confirmed JV formalises long AMC annuity around sleeper VB fleet; incremental equity surprise may be limited if order was previously known.",
+          "risk_flags": [
+            "PE ~62.9 / 5.77x book",
+            "3Y ROE ~3.2%",
+            "Promoter holding -5% over 3Y",
+            "promoter_pledge_pct UNKNOWN",
+            "Trading at 5.77x book",
+            "Low 3Y ROE 3.18%",
+            "Promoter holding -5% over 3Y"
+          ]
+        },
+        {
+          "ticker": "SUZLON",
+          "kind": "avoid",
+          "confidence_1_10": 7,
+          "note": "Avoid: penny, LH_LL below DMAs RSI~34 despite confirmed order \u2014 no long structure; Tape: structure=LH_LL, breakout_state=none, price_vs_dma=below, RSI=33.96; News: sentiment=bull, confirmation=confirmed, strength=med; News why: Confirmed DevCo order with clear MW/scope; INR contract value not in disclosure\u2014strength med, no hype.",
+          "risk_flags": [
+            "LH_LL + below DMAs",
+            "RSI~34",
+            "Low promoter holding 11.7%",
+            "Penny liquidity/volatility",
+            "promoter_pledge_pct UNKNOWN",
+            "Low promoter holding 11.7%",
+            "No dividend despite profits"
+          ]
+        },
+        {
+          "ticker": "YESBANK",
+          "kind": "avoid",
+          "confidence_1_10": 7,
+          "note": "Avoid: penny bank with zero promoter holding and heavy contingent-liability flags; Tape: structure=unclear, breakout_state=none, price_vs_dma=above, RSI=54.48; News: sentiment=mixed, confirmation=confirmed, strength=low; News why: Earnings print is constructive but not a fresh 21 Sep breakout; capital raise is enabling, not executed\u2014keep strength low.",
+          "risk_flags": [
+            "Zero promoter holding",
+            "Low 3Y ROE",
+            "Large contingent liabilities",
+            "No dividend despite profits",
+            "promoter_pledge_pct UNKNOWN",
+            "No dividend despite profits",
+            "Low 3Y ROE 5.33%",
+            "Large contingent liabilities"
+          ]
+        }
+      ]
+    },
+    "5_penny_under_50": {
+      "items": [],
+      "avoided_pennies": [
+        {
+          "ticker": "IDEA",
+          "cmp": 13.84,
+          "action": "avoid",
+          "note": "breakdown + negative book / heavy red_flags + catalyst only rumored"
+        },
+        {
+          "ticker": "SUZLON",
+          "cmp": 43.34,
+          "action": "avoid",
+          "note": "penny, LH_LL below DMAs RSI~34 despite confirmed order \u2014 no long structure"
+        },
+        {
+          "ticker": "YESBANK",
+          "cmp": 23.17,
+          "action": "avoid",
+          "note": "penny bank with zero promoter holding and heavy contingent-liability flags"
+        }
+      ],
+      "note": "No buy under \u20b950; avoided pennies listed separately."
+    },
+    "6_final_summary": {
+      "universe": [
+        "PNB",
+        "COALINDIA",
+        "BANKBARODA",
+        "CANBK",
+        "IRFC",
+        "NTPC",
+        "PFC",
+        "RECLTD",
+        "RELIANCE",
+        "SBIN",
+        "TCS",
+        "IOC",
+        "ONGC",
+        "POWERGRID",
+        "TATAPOWER",
+        "IDEA",
+        "WIPRO",
+        "BHEL",
+        "SUZLON",
+        "YESBANK"
+      ],
+      "buys": [
+        "PNB",
+        "COALINDIA"
+      ],
+      "holds": [
+        "BANKBARODA",
+        "CANBK",
+        "IRFC",
+        "NTPC",
+        "PFC",
+        "RECLTD",
+        "RELIANCE",
+        "SBIN",
+        "TCS",
+        "IOC",
+        "ONGC",
+        "POWERGRID",
+        "TATAPOWER"
+      ],
+      "avoids": [
+        "IDEA",
+        "WIPRO",
+        "BHEL",
+        "SUZLON",
+        "YESBANK"
+      ],
+      "soft_avoid_fresh_longs": [
+        "BANKBARODA",
+        "CANBK",
+        "IRFC",
+        "NTPC",
+        "PFC",
+        "RECLTD",
+        "RELIANCE",
+        "SBIN",
+        "TCS"
+      ],
+      "paper_fills": [
+        "PNB size_inr=2242.0 shares=19",
+        "COALINDIA size_inr=2073.5 shares=5"
+      ],
+      "paper_notional_inr": 4315.5,
+      "headline": "2 buy / 13 hold / 5 avoid on 20 names; paper notional ~\u20b94316; risk_pct=0.01."
+    }
+  }
+}

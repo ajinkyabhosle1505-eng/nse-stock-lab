@@ -1,0 +1,40 @@
+{
+  "paper": true,
+  "job_id": "multi-2026-09-21",
+  "positions": [
+    {
+      "symbol": "PNB",
+      "qty": 19,
+      "entry": 118.0,
+      "sl": 112.93,
+      "targets": [
+        122.22,
+        125.39
+      ],
+      "status": "open",
+      "fillId": "504aef3b-b5e1-4599-9222-5299e35add68",
+      "side": "buy",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "paper": true,
+      "job_id": "multi-2026-09-21"
+    },
+    {
+      "symbol": "COALINDIA",
+      "qty": 5,
+      "entry": 414.7,
+      "sl": 395.09,
+      "targets": [
+        436.3,
+        449.26
+      ],
+      "status": "open",
+      "fillId": "b4cf0ea5-32ea-43d1-b885-caa125f85d0d",
+      "side": "buy",
+      "unrealizedPnl": "UNKNOWN",
+      "realizedPnl": 0.0,
+      "paper": true,
+      "job_id": "multi-2026-09-21"
+    }
+  ]
+}

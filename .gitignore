@@ -1,0 +1,27 @@
+# deps / build
+**/node_modules/
+**/.next/
+**/out/
+**/dist/
+**/.turbo/
+**/.vercel/
+*.tsbuildinfo
+next-env.d.ts
+
+# env / secrets
+.env
+.env.*
+!.env.example
+**/.secrets/
+**/credentials*
+
+# os / ide
+.DS_Store
+*.log
+.idea/
+.vscode/
+
+# python
+**/__pycache__/
+*.pyc
+.venv/
