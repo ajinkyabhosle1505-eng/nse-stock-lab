@@ -146,11 +146,27 @@ export default function BudgetPicksPage() {
           {data.note ? (
             <p className="text-xs text-slate-500">{data.note}</p>
           ) : null}
+          {data.reasons?.length ? (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-100 space-y-1">
+              {data.reasons.map((r) => (
+                <p key={r}>{r}</p>
+              ))}
+            </div>
+          ) : null}
+          {data.warnings?.length ? (
+            <div className="rounded-xl border border-orange-500/30 bg-orange-500/10 p-3 text-xs text-orange-100 space-y-1">
+              {data.warnings.map((w) => (
+                <p key={w}>{w}</p>
+              ))}
+            </div>
+          ) : null}
           {data.picks.length === 0 ? (
-            <p className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400">
-              No buys fit budget/risk right now (tape or sizing). Try a larger
-              budget or check Lookup.
-            </p>
+            !data.reasons?.length ? (
+              <p className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-400">
+                No buys fit budget/risk right now. Try a larger budget or check
+                Lookup.
+              </p>
+            ) : null
           ) : (
             data.picks.map((v) => <VerdictCard key={v.ticker} v={v} />)
           )}
