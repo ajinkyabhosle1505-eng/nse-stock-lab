@@ -1,13 +1,14 @@
 /**
  * Live lookup / budget-picks orchestrator.
  * Tech: in-process Yahoo + computeTech.
- * Funda/News: desk Python scrapers (never invent numbers).
+ * Funda/News: pure HTTP (Yahoo + Screener/RSS) — Vercel-safe, no Python child_process.
  * Risk: mergeVerdict(tech, { budget_inr, risk_pct, funda, news }).
  */
 
-import { spawn } from "child_process";
 import { fetchYahooHistory, normalizeNseSymbol } from "./yahoo";
 import { computeTech, unknownTech } from "./tech";
+import { fetchLiveFunda, unknownFunda } from "./funda";
+import { fetchLiveNews, unknownNews } from "./news";
 import {
   mergeVerdict,
   pickScore,
@@ -17,104 +18,31 @@ import {
 import { BUDGET_UNIVERSE, SEBI_BANNER } from "./universe";
 import type { LookupResponse, Verdict } from "./types";
 
-const FUNDA_SCRIPT = "/workspace/stock-lab/funda/scrape_one.py";
-const NEWS_SCRIPT = "/workspace/stock-lab/news/scrape_one.py";
-const SCRAPE_TIMEOUT_MS = 20_000;
-
 export interface LookupOpts {
   budget_inr?: number;
   risk_pct?: number;
-  /** Spawn funda scrape_one.py (default true). */
+  /** Fetch live funda (default true). */
   funda?: boolean;
-  /** Spawn news scrape_one.py (default true for single lookup). */
+  /** Fetch live news (default true for single lookup). */
   news?: boolean;
 }
 
-function unknownLane(ticker: string, note: string, keys: string[]): LaneStub {
+function toStub(
+  lane: {
+    ticker: string;
+    fields: Record<string, unknown>;
+    unknowns: string[];
+    sources: string[];
+    note?: string;
+  }
+): LaneStub {
   return {
-    ticker,
-    fields: {},
-    unknowns: keys,
-    sources: [],
-    note,
+    ticker: lane.ticker,
+    fields: lane.fields || {},
+    unknowns: lane.unknowns || [],
+    sources: lane.sources || [],
+    note: lane.note,
   };
-}
-
-/** Spawn desk scrape_one.py; on fail/timeout → unknowns[]. Never invents. */
-function runScrapeOne(
-  script: string,
-  ticker: string,
-  timeoutMs = SCRAPE_TIMEOUT_MS
-): Promise<LaneStub> {
-  return new Promise((resolve) => {
-    const child = spawn("python3", [script, ticker], {
-      stdio: ["ignore", "pipe", "pipe"],
-      env: process.env,
-    });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    const finish = (lane: LaneStub) => {
-      if (settled) return;
-      settled = true;
-      resolve(lane);
-    };
-    const timer = setTimeout(() => {
-      try {
-        child.kill("SIGKILL");
-      } catch {
-        /* ignore */
-      }
-      finish(
-        unknownLane(ticker, `scrape timeout after ${timeoutMs}ms (${script})`, [
-          "scrape_timeout",
-        ])
-      );
-    }, timeoutMs);
-
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-    child.on("error", (err) => {
-      clearTimeout(timer);
-      finish(
-        unknownLane(ticker, `scrape spawn error: ${err.message}`, [
-          "scrape_spawn_error",
-        ])
-      );
-    });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      try {
-        const parsed = JSON.parse(stdout) as {
-          ticker?: string;
-          fields?: Record<string, unknown>;
-          unknowns?: string[];
-          sources?: string[];
-          note?: string;
-          ts?: string;
-        };
-        finish({
-          ticker: parsed.ticker || ticker,
-          fields: parsed.fields || {},
-          unknowns: Array.isArray(parsed.unknowns) ? parsed.unknowns : [],
-          sources: Array.isArray(parsed.sources) ? parsed.sources : [],
-          note: parsed.note,
-        });
-      } catch {
-        finish(
-          unknownLane(
-            ticker,
-            `scrape parse/fail (exit ${code}): ${(stderr || stdout).slice(0, 240) || "empty"}`,
-            ["scrape_failed"]
-          )
-        );
-      }
-    });
-  });
 }
 
 function laneToResponse(
@@ -129,7 +57,7 @@ function laneToResponse(
       lane.note ||
       (lane.sources?.length
         ? `sources: ${lane.sources.join(" · ")}`
-        : "live scrape"),
+        : "live HTTP"),
     sources: lane.sources,
   };
 }
@@ -140,34 +68,26 @@ export async function runLookup(
 ): Promise<LookupResponse> {
   const { ticker, yahoo } = normalizeNseSymbol(symbolRaw);
   const hist = await fetchYahooHistory(yahoo);
-  const tech = hist
-    ? computeTech(ticker, hist)
-    : unknownTech(ticker, yahoo);
+  const tech = hist ? computeTech(ticker, hist) : unknownTech(ticker, yahoo);
 
   const wantFunda = opts.funda !== false;
   const wantNews = opts.news !== false;
 
-  const [funda, news] = await Promise.all([
+  const [fundaLane, newsLane] = await Promise.all([
     wantFunda
-      ? runScrapeOne(FUNDA_SCRIPT, ticker)
+      ? fetchLiveFunda(ticker, yahoo)
       : Promise.resolve(
-          unknownLane(ticker, "Funda scrape skipped", [
-            "pe_ttm",
-            "roe_pct",
-            "debt_equity",
-            "funda_quality",
-          ])
+          unknownFunda(ticker, "Funda fetch skipped")
         ),
     wantNews
-      ? runScrapeOne(NEWS_SCRIPT, ticker)
+      ? fetchLiveNews(ticker, yahoo)
       : Promise.resolve(
-          unknownLane(ticker, "News scrape skipped", [
-            "headline",
-            "confirmation_status",
-            "why_for_verdict",
-          ])
+          unknownNews(ticker, "News fetch skipped")
         ),
   ]);
+
+  const funda = toStub(fundaLane);
+  const news = toStub(newsLane);
 
   const verdict = mergeVerdict(tech, {
     budget_inr: opts.budget_inr ?? 10000,
@@ -219,8 +139,8 @@ export interface BudgetPicksResult {
 }
 
 /**
- * Scan universe with live Yahoo tech + funda scrape + risk.
- * News skipped for speed (prefer at least Screener funda per ticker).
+ * Scan universe with live Yahoo tech + HTTP funda + risk.
+ * News skipped for speed.
  */
 export async function runBudgetPicks(
   budget_inr: number,
@@ -277,6 +197,6 @@ export async function runBudgetPicks(
     universe,
     picks: buys.slice(0, 10),
     scanned: universe.length,
-    note: "Live Yahoo tech + funda scrape_one.py + TS mergeVerdict (news skipped for speed).",
+    note: "Live Yahoo tech + HTTP funda (Screener/Yahoo) + TS mergeVerdict (news skipped for speed). Vercel-safe.",
   };
 }
