@@ -1,7 +1,6 @@
 import {
   isPennyWatch,
   isPreferredSector,
-  MICRO_BUDGET_INR,
   sectorOf,
   SEBI_BANNER,
 } from "./universe";
@@ -54,12 +53,12 @@ export function sizePosition(input: SizeInput): SizeResult {
     };
   }
   let shares = Math.floor(risk_inr / per_share);
-  let microFloor = false;
-  // P0a: micro-budget floor — if risk% cannot fund 1 share but 1 share fits, take it
+  let affordOneShare = false;
+  // P0a: if classic risk% yields 0 shares but 1 share fits in budget, offer afford_one_share
   if (shares < 1) {
-    if (budget_inr <= MICRO_BUDGET_INR && entry <= budget_inr) {
-      shares = 1;
-      microFloor = true;
+    if (entry <= budget_inr) {
+      shares = Math.max(1, Math.floor(budget_inr / entry));
+      affordOneShare = true;
     } else {
       return {
         risk_inr,
@@ -67,7 +66,7 @@ export function sizePosition(input: SizeInput): SizeResult {
         shares: 0,
         size_inr: 0,
         ok: false,
-        reason: "shares<1",
+        reason: "cant_buy_even_one_share",
       };
     }
   }
@@ -90,7 +89,7 @@ export function sizePosition(input: SizeInput): SizeResult {
     shares,
     size_inr: Math.round(entry * shares * 100) / 100,
     ok: true,
-    reason: microFloor ? "micro_floor_1share" : undefined,
+    reason: affordOneShare ? "afford_one_share" : undefined,
   };
 }
 
