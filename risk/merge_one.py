@@ -35,6 +35,9 @@ def _round(n: float, d: int = 2) -> float:
     return round(n, d)
 
 
+MICRO_BUDGET_INR = 2500
+
+
 def size_position(
     budget: float, risk_pct: float, entry: float, sl: float
 ) -> dict[str, Any]:
@@ -48,8 +51,14 @@ def size_position(
             "reason": "per_share<=0",
         }
     shares = int(risk_inr // per)
+    micro = False
+    # P0a: micro-budget 1-share floor when risk% cannot fund a share
     if shares < 1:
-        return {"ok": False, "shares": 0, "size_inr": 0, "reason": "shares<1"}
+        if budget <= MICRO_BUDGET_INR and entry <= budget:
+            shares = 1
+            micro = True
+        else:
+            return {"ok": False, "shares": 0, "size_inr": 0, "reason": "shares<1"}
     while shares >= 1 and entry * shares > budget:
         shares -= 1
     if shares < 1:
@@ -63,7 +72,7 @@ def size_position(
         "ok": True,
         "shares": shares,
         "size_inr": _round(entry * shares),
-        "reason": None,
+        "reason": "micro_floor_1share" if micro else None,
     }
 
 
@@ -133,7 +142,14 @@ def merge(
 
     reasons: list[str] = []
     flags: list[str] = []
-    favor = brk == "breakout" or structure == "HH_HL"
+    soft = (
+        brk != "breakdown"
+        and structure != "LH_LL"
+        and pvd in ("above", "mixed")
+        and rsi is not None
+        and 48 <= rsi <= 62
+    )
+    favor = brk == "breakout" or structure == "HH_HL" or soft
     hold_avoid = brk == "breakdown" or (
         pvd == "below" and structure == "LH_LL"
     )
@@ -150,6 +166,10 @@ def merge(
         reasons.append(f"Tape: breakout, price_vs_dma={pvd}, RSI~{rsi}")
     elif structure == "HH_HL":
         reasons.append(f"Tape: HH_HL, price_vs_dma={pvd}, RSI~{rsi}")
+    elif soft:
+        reasons.append(
+            f"Tape: constructive (structure={structure}, price_vs_dma={pvd}, RSI~{round(rsi)}) — multi-sector soft long"
+        )
     else:
         reasons.append(
             f"Tape: structure={structure}, breakout={brk}, price_vs_dma={pvd}"

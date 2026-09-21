@@ -7,7 +7,7 @@ import type { LookupResponse } from "@/lib/types";
 import { actionClass, inr, num } from "@/lib/format";
 
 export default function LookupPage() {
-  const [symbol, setSymbol] = useState("PNB");
+  const [symbol, setSymbol] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<LookupResponse | null>(null);
@@ -65,7 +65,7 @@ export default function LookupPage() {
             id="symbol"
             value={symbol}
             onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-            placeholder="PNB"
+            placeholder="e.g. INFY"
             className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-3 text-lg font-semibold uppercase text-white outline-none ring-emerald-500/40 focus:ring-2"
             autoCapitalize="characters"
             autoCorrect="off"

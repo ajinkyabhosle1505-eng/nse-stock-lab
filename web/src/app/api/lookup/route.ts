@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       {
         error: "Missing symbol",
         sebi_banner: SEBI_BANNER,
-        hint: "GET /api/lookup?symbol=PNB",
+        hint: "GET /api/lookup?symbol=INFY",
       },
       { status: 400 }
     );

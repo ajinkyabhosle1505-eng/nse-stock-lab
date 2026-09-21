@@ -112,6 +112,8 @@ export interface TechFields {
   volume_vs_avg_20d?: number | "UNKNOWN";
   price_bucket?: string;
   timeframe: string;
+  /** Last ~30 daily closes for sparkline (P1b). */
+  closes_30d?: number[];
 }
 
 export interface TechLane {

@@ -201,6 +201,8 @@ export function computeTech(
   }
 
   const unknowns: string[] = [];
+  const closes_30d = closes.slice(-30).map((c) => round(c));
+
   const fields: TechFields = {
     cmp,
     atr_14: atr != null ? round(atr) : "UNKNOWN",
@@ -216,6 +218,7 @@ export function computeTech(
     volume_vs_avg_20d: volRatio,
     price_bucket: priceBucket(cmp),
     timeframe: "1D",
+    closes_30d,
   };
 
   if (brk.level != null) {

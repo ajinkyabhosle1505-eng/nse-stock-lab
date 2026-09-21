@@ -5,6 +5,9 @@ import { actionClass, inr, num, planLevels } from "@/lib/format";
 import { enrichPlanFields } from "@/lib/plan";
 import { runLookup } from "@/lib/live";
 import type { Verdict } from "@/lib/types";
+import PlanChart from "@/components/PlanChart";
+import Sparkline from "@/components/Sparkline";
+import { plainAction, plainReason, plainBreakout, plainStructure, plainVsDma } from "@/lib/plain";
 
 type Props = {
   params: Promise<{ ticker: string }>;
@@ -150,6 +153,7 @@ export default async function IdeaDetailPage({ params, searchParams }: Props) {
         <h3 className="mb-2 mt-4 text-xs font-semibold uppercase tracking-wider text-sky-400/80">
           Plan
         </h3>
+        <p className="mb-2 text-xs text-slate-400">{plainAction(verdict.action)}</p>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <Item label="Buy trigger" value={plan.buy_trigger} />
           <Item label="Stop invalidation" value={plan.stop_invalidation} />
@@ -157,14 +161,43 @@ export default async function IdeaDetailPage({ params, searchParams }: Props) {
           <Item label="Time horizon" value={plan.time_horizon} />
         </dl>
 
+        <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Plan chart
+          </h3>
+          <PlanChart
+            entry={typeof verdict.entry === "number" ? verdict.entry : null}
+            sl={typeof verdict.sl === "number" ? verdict.sl : null}
+            targets={verdict.targets}
+          />
+        </div>
+
+        {Array.isArray(techLane?.fields?.closes_30d) &&
+        (techLane!.fields.closes_30d as number[]).length >= 2 ? (
+          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+              ~30-day tape
+            </h3>
+            <Sparkline closes={techLane!.fields.closes_30d as number[]} />
+          </div>
+        ) : null}
+
+        {techLane?.fields ? (
+          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/40 p-3 text-xs text-slate-300 space-y-1">
+            <p>{plainStructure(String(techLane.fields.structure ?? ""))}</p>
+            <p>{plainBreakout(String(techLane.fields.breakout_state ?? ""))}</p>
+            <p>{plainVsDma(String(techLane.fields.price_vs_dma ?? ""))}</p>
+          </div>
+        ) : null}
+
         {verdict.reasons?.length ? (
           <div className="mt-4">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Reasons
+              Why (plain language)
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-slate-300">
               {verdict.reasons.map((r) => (
-                <li key={r}>{r}</li>
+                <li key={r}>{plainReason(r)}</li>
               ))}
             </ul>
           </div>

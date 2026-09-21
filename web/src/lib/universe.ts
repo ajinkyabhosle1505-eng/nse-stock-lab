@@ -1,68 +1,95 @@
-/** Live budget-picks universe (~20–25 NSE names). Do not invent prices. */
+/** Live budget-picks universe (~22–25 NSE names across sectors). Do not invent prices. */
 
 export const BUDGET_UNIVERSE = [
+  // Banks
   "SBIN",
-  "BANKBARODA",
-  "PNB",
-  "CANBK",
   "HDFCBANK",
+  "ICICIBANK",
+  "AXISBANK",
+  "PNB",
+  // Energy / Oil
   "ONGC",
   "NTPC",
-  "POWERGRID",
   "COALINDIA",
-  "IOC",
-  "BPCL",
-  "IRFC",
-  "RECLTD",
-  "PFC",
-  "NMDC",
-  "VEDL",
-  "TATAPOWER",
-  "ITC",
-  "WIPRO",
   "RELIANCE",
-  "YESBANK",
-  "IDEA",
+  // IT
+  "INFY",
+  "TCS",
+  "WIPRO",
+  // Pharma
+  "SUNPHARMA",
+  "CIPLA",
+  // Auto
+  "TATAMOTORS",
+  "MARUTI",
+  // FMCG
+  "ITC",
+  "HINDUNILVR",
+  // Metals
+  "TATASTEEL",
+  "NMDC",
+  // Infra / Capital goods
+  "LT",
+  "IRFC",
+  // Telecom
+  "BHARTIARTL",
 ] as const;
 
 export type UniverseTicker = (typeof BUDGET_UNIVERSE)[number];
 
 const SECTOR: Record<string, string> = {
   SBIN: "Banks",
-  BANKBARODA: "Banks",
-  PNB: "Banks",
-  CANBK: "Banks",
   HDFCBANK: "Banks",
-  YESBANK: "Banks",
+  ICICIBANK: "Banks",
+  AXISBANK: "Banks",
+  PNB: "Banks",
   ONGC: "Energy",
   NTPC: "Energy",
-  POWERGRID: "Energy",
   COALINDIA: "Energy",
+  RELIANCE: "Energy",
+  INFY: "IT",
+  TCS: "IT",
+  WIPRO: "IT",
+  SUNPHARMA: "Pharma",
+  CIPLA: "Pharma",
+  TATAMOTORS: "Auto",
+  MARUTI: "Auto",
+  ITC: "FMCG",
+  HINDUNILVR: "FMCG",
+  TATASTEEL: "Metals",
+  NMDC: "Metals",
+  LT: "Infra",
+  IRFC: "Infra",
+  BHARTIARTL: "Telecom",
+  // legacy / penny watch (may appear in fixtures)
+  YESBANK: "Banks",
+  IDEA: "Telecom",
+  BANKBARODA: "Banks",
+  CANBK: "Banks",
+  POWERGRID: "Energy",
   IOC: "Energy",
   BPCL: "Energy",
   TATAPOWER: "Energy",
-  RELIANCE: "Energy",
-  IRFC: "Infra",
   RECLTD: "Infra",
   PFC: "Infra",
-  NMDC: "Metals",
   VEDL: "Metals",
-  ITC: "FMCG",
-  WIPRO: "IT",
-  IDEA: "Telecom",
 };
 
-/** Preferred when tape supports: PSU / Infra / Banks / Energy */
-const PREFERRED_SECTORS = new Set(["Banks", "Energy", "Infra"]);
+/** @deprecated P0b — sector preference neutralized; kept for label only. */
+const PREFERRED_SECTORS = new Set<string>();
 
 const PENNY_WATCH = new Set(["YESBANK", "IDEA"]);
+
+/** Budgets at or below this use micro 1-share floor when risk sizing yields 0. */
+export const MICRO_BUDGET_INR = 2500;
 
 export function sectorOf(ticker: string): string {
   return SECTOR[ticker.toUpperCase()] || "Unknown";
 }
 
-export function isPreferredSector(ticker: string): boolean {
-  return PREFERRED_SECTORS.has(sectorOf(ticker));
+/** Always false after P0b neutralize — kept so call sites compile. */
+export function isPreferredSector(_ticker: string): boolean {
+  return PREFERRED_SECTORS.has(sectorOf(_ticker));
 }
 
 export function isPennyWatch(ticker: string): boolean {

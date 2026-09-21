@@ -8,8 +8,8 @@ Mobile-first **Next.js (App Router) + TypeScript + Tailwind** progressive web ap
 
 | Route | Purpose |
 |-------|---------|
-| `/budget` | ₹ budget input + chips (5k / 10k / 25k / 50k), default `10000`, persisted in `localStorage` |
-| `/lookup` | Live ticker lookup (Yahoo `SYMBOL.NS`) → tech + risk verdict + plan fields |
+| `/budget` | ₹ budget input + chips (100 / 500 / 1k / 5k / 10k / 25k / 50k), default `10000`, persisted in `localStorage` |
+| `/lookup` | Live ticker lookup (Yahoo `SYMBOL.NS`, placeholder e.g. INFY) → tech + risk verdict + plan fields |
 | `/ideas` | Verdict cards from `public/data/verdicts.json` (plan fields derived for fixtures) |
 | `/ideas/[ticker]` | Detail: verdict + tech / funda / news lanes |
 | `/ideas/[ticker]?live=1` | Same detail, but live Yahoo tech + TS risk merge |
@@ -23,9 +23,9 @@ Sticky SEBI banner on every screen. Bottom nav: Budget · Lookup · Ideas · Pic
 
 Prices come **only** from Yahoo (`query1` chart API for `SYMBOL.NS`). Missing values are marked **UNKNOWN** — never invented.
 
-### `GET /api/lookup?symbol=PNB`
+### `GET /api/lookup?symbol=INFY`
 
-Normalizes to `PNB.NS`, returns:
+Normalizes to `INFY.NS`, returns:
 
 - **tech**: live Yahoo chart → `cmp`, `atr_14`, `support_levels`, `resistance_levels`, `structure`, `breakout_state`, `trigger_level`, `rsi_14`, `price_vs_dma`, DMAs
 - **funda**: desk scrape `funda/scrape_one.py` → Screener PE/ROE/D-E + `funda_quality` (gaps → `unknowns[]`)
@@ -38,13 +38,15 @@ Optional: `budget_inr`, `risk_pct` (default 10000 / 1). Never invents numbers/fi
 
 Body: `{ "budget_inr": 10000, "risk_pct": 1 }`
 
-Universe (~22): SBIN, BANKBARODA, PNB, CANBK, HDFCBANK, ONGC, NTPC, POWERGRID, COALINDIA, IOC, BPCL, IRFC, RECLTD, PFC, NMDC, VEDL, TATAPOWER, ITC, WIPRO, RELIANCE, YESBANK, IDEA.
+Universe (~23, multi-sector): SBIN, HDFCBANK, ICICIBANK, AXISBANK, PNB, ONGC, NTPC, COALINDIA, RELIANCE, INFY, TCS, WIPRO, SUNPHARMA, CIPLA, TATAMOTORS, MARUTI, ITC, HINDUNILVR, TATASTEEL, NMDC, LT, IRFC, BHARTIARTL.
 
 Returns up to **10 buys** where `shares >= 1` and `entry * shares <= budget_inr`.
 
-**Sizing:** `risk_inr = budget * risk_pct/100`; `per_share = entry − sl`; `shares = floor(risk_inr / per_share)`; no buy if `per_share <= 0`, `shares < 1`, or notional &gt; budget.
+**Sizing (P0a):** `risk_inr = budget * risk_pct/100`; `per_share = entry − sl`; `shares = floor(risk_inr / per_share)`. Micro-budgets ≤ ₹2500: if risk sizing yields 0 but 1 share fits, take 1 share (`micro_floor_1share`). No buy if `per_share <= 0` or notional &gt; budget.
 
-**Bias:** breakout or HH_HL (not breakdown); prefer Banks / Energy / Infra; avoid pennies YESBANK/IDEA unless exceptional; below all DMAs + LH_LL → hold/avoid.
+**Bias (P0b):** breakout, HH_HL, or soft constructive (not LH_LL, mixed/above DMAs, RSI 48–62). **No preferred-sector score bonus.** Below all DMAs + LH_LL → hold/avoid.
+
+**P1:** plain-language reason lines + plan ladder / 30d sparkline on idea detail.
 
 Also available as `GET /api/budget-picks?budget_inr=10000&risk_pct=1` for curl smoke tests.
 

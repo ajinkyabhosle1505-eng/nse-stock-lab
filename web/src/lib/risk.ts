@@ -1,6 +1,7 @@
 import {
   isPennyWatch,
   isPreferredSector,
+  MICRO_BUDGET_INR,
   sectorOf,
   SEBI_BANNER,
 } from "./universe";
@@ -53,15 +54,22 @@ export function sizePosition(input: SizeInput): SizeResult {
     };
   }
   let shares = Math.floor(risk_inr / per_share);
+  let microFloor = false;
+  // P0a: micro-budget floor — if risk% cannot fund 1 share but 1 share fits, take it
   if (shares < 1) {
-    return {
-      risk_inr,
-      per_share,
-      shares: 0,
-      size_inr: 0,
-      ok: false,
-      reason: "shares<1",
-    };
+    if (budget_inr <= MICRO_BUDGET_INR && entry <= budget_inr) {
+      shares = 1;
+      microFloor = true;
+    } else {
+      return {
+        risk_inr,
+        per_share,
+        shares: 0,
+        size_inr: 0,
+        ok: false,
+        reason: "shares<1",
+      };
+    }
   }
   while (shares >= 1 && entry * shares > budget_inr) {
     shares -= 1;
@@ -82,6 +90,7 @@ export function sizePosition(input: SizeInput): SizeResult {
     shares,
     size_inr: Math.round(entry * shares * 100) / 100,
     ok: true,
+    reason: microFloor ? "micro_floor_1share" : undefined,
   };
 }
 
@@ -157,7 +166,16 @@ function buyBias(tech: TechLane): {
     };
   }
 
-  let favorBuy = isBreakout || isHhHl;
+  // Soft constructive: mixed/above DMAs + mid RSI, not LH_LL — enables multi-sector buys
+  const softConstructive =
+    !isBreakdown &&
+    structure !== "LH_LL" &&
+    (pvd === "above" || pvd === "mixed") &&
+    rsi != null &&
+    rsi >= 48 &&
+    rsi <= 62;
+
+  let favorBuy = isBreakout || isHhHl || softConstructive;
 
   if (isBreakout) {
     reasons.push(
@@ -170,6 +188,12 @@ function buyBias(tech: TechLane): {
       `Tape: HH_HL structure, price_vs_dma=${pvd}${
         rsi != null ? `, RSI~${Math.round(rsi)}` : ""
       }`
+    );
+  } else if (softConstructive) {
+    reasons.push(
+      `Tape: constructive (structure=${structure}, price_vs_dma=${pvd}, RSI~${Math.round(
+        rsi!
+      )}) — multi-sector soft long`
     );
   } else {
     reasons.push(
@@ -413,9 +437,8 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
     if (strField(opts.funda?.fields, "funda_quality") === "watch") {
       confidence -= 1;
     }
-    if (preferred) {
-      reasons.push(`Sector preference: ${sector}`);
-    }
+    // P0b: sector preference neutralized — no score/reason boost
+    void preferred;
     confidence = Math.max(1, Math.min(9, confidence));
   } else if (gated.favorBuy && !sized.ok) {
     action = "hold";
@@ -469,7 +492,8 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
 export function pickScore(v: Verdict): number {
   let s = (v.confidence_1_10 || 0) * 10;
   if (v.action === "buy") s += 100;
-  if (isPreferredSector(v.ticker)) s += 15;
+  // P0b: no preferred-sector +15 — rank on tape/funda/R:R only
+  void isPreferredSector;
   if (v.penny_under_50) s -= 40;
   if (v.r_r != null) s += v.r_r * 5;
   if (v.under_1000) s += 5;

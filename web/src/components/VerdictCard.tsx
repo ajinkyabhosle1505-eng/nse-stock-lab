@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Verdict } from "@/lib/types";
 import { actionClass, actionDot, inr, num, planLevels } from "@/lib/format";
 import { enrichPlanFields } from "@/lib/plan";
+import { plainAction, plainReason } from "@/lib/plain";
 
 export default function VerdictCard({
   v,
@@ -17,6 +18,9 @@ export default function VerdictCard({
     (verd.live
       ? `/ideas/${encodeURIComponent(verd.ticker)}?live=1`
       : `/ideas/${encodeURIComponent(verd.ticker)}`);
+  const topReason = verd.reasons?.[0]
+    ? plainReason(verd.reasons[0])
+    : null;
 
   return (
     <Link
@@ -39,6 +43,7 @@ export default function VerdictCard({
           {verd.sector ? (
             <p className="mt-0.5 text-xs text-slate-400">{verd.sector}</p>
           ) : null}
+          <p className="mt-1 text-xs text-slate-500">{plainAction(verd.action)}</p>
         </div>
         <span
           className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide ${actionClass(
@@ -52,7 +57,7 @@ export default function VerdictCard({
       <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
         <Metric label="Confidence" value={`${verd.confidence_1_10}/10`} />
         <Metric label="Entry" value={inr(verd.entry ?? undefined)} />
-        <Metric label="SL" value={inr(verd.sl ?? undefined)} />
+        <Metric label="Stop loss" value={inr(verd.sl ?? undefined)} />
         <Metric
           label="Targets"
           value={
@@ -73,6 +78,12 @@ export default function VerdictCard({
         <Metric label="Sell targets" value={plan.sell_targets} />
         <Metric label="Horizon" value={plan.time_horizon} />
       </div>
+
+      {topReason ? (
+        <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-400">
+          {topReason}
+        </p>
+      ) : null}
     </Link>
   );
 }

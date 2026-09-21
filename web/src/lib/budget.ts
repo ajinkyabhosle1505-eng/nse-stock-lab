@@ -1,6 +1,7 @@
 export const BUDGET_KEY = "stock-lab.budget_inr";
 export const DEFAULT_BUDGET = 10000;
-export const BUDGET_CHIPS = [5000, 10000, 25000, 50000] as const;
+/** Includes micro chips for P0a sizing demos. */
+export const BUDGET_CHIPS = [100, 500, 1000, 5000, 10000, 25000, 50000] as const;
 
 export function readBudget(): number {
   if (typeof window === "undefined") return DEFAULT_BUDGET;

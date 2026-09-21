@@ -74,7 +74,7 @@ export default function BudgetPage() {
         <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
           Quick chips
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {BUDGET_CHIPS.map((chip) => {
             const active = budget === chip;
             return (
