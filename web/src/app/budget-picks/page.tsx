@@ -20,6 +20,9 @@ interface PicksResponse {
   note?: string;
   error?: string;
   universe?: string[];
+  empty_code?: string;
+  reasons?: string[];
+  warnings?: string[];
 }
 
 export default function BudgetPicksPage() {
@@ -65,8 +68,8 @@ export default function BudgetPicksPage() {
           Budget picks
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Live Yahoo scan of ~22 NSE names → top 10 buys that fit risk sizing.
-          Prefer Banks / Energy / Infra when tape supports.
+          What can you paper-buy with ₹X? Live Yahoo scan → up to 10 buys that
+          fit your budget (max 2 per sector). Not a broker.
         </p>
       </header>
 
