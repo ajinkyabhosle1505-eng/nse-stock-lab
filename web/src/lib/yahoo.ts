@@ -109,10 +109,12 @@ async function ensureCrumb(force = false): Promise<CrumbState | null> {
       headers: {
         "User-Agent": UA,
         Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-IN,en;q=0.9",
         ...(cookie ? { Cookie: cookie } : {}),
       },
       redirect: "follow",
       cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     });
     cookie = parseSetCookie(quoteRes.headers, cookie);
     const html = await quoteRes.text();
@@ -188,9 +190,11 @@ export async function fetchYahooQuoteSummary(
       headers: {
         "User-Agent": UA,
         Accept: "application/json",
+        "Accept-Language": "en-IN,en;q=0.9",
         Cookie: state.cookie,
       },
       cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     });
     return res;
   };
@@ -257,14 +261,21 @@ export async function fetchYahooHistory(
     yahooSymbol
   )}?interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}`;
 
-  const res = await fetch(url, {
-    headers: {
-      "User-Agent": UA,
-      Accept: "application/json",
-    },
-    next: { revalidate: 0 },
-    cache: "no-store",
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json",
+        "Accept-Language": "en-IN,en;q=0.9",
+      },
+      next: { revalidate: 0 },
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch {
+    return null;
+  }
 
   if (!res.ok) {
     return null;
@@ -329,6 +340,121 @@ export async function fetchYahooHistory(
   }
 
   if (bars.length < 30) return null;
+
+  return {
+    symbol: result.meta?.symbol || yahooSymbol,
+    currency: result.meta?.currency ?? null,
+    regularMarketPrice:
+      result.meta?.regularMarketPrice != null &&
+      Number.isFinite(result.meta.regularMarketPrice)
+        ? result.meta.regularMarketPrice
+        : null,
+    bars,
+    source: `yahoo:query1/chart:${yahooSymbol}:${range},${interval}`,
+  };
+}
+
+/**
+ * Daily OHLC bars for forecast marking — relaxes the 30-bar floor used by
+ * fetchYahooHistory. Never invents closes. Returns null on failure.
+ */
+export async function fetchYahooDailyBars(
+  yahooSymbol: string,
+  range: "1mo" | "3mo" | "6mo" | "1y" = "3mo"
+): Promise<{ date: string; open: number; high: number; low: number; close: number }[] | null> {
+  const hist = await fetchYahooHistoryRelaxed(yahooSymbol, range, "1d", 1);
+  if (!hist?.bars?.length) return null;
+  return hist.bars.map((b) => {
+    const d = new Date(b.date * 1000);
+    const date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(d);
+    return { date, open: b.open, high: b.high, low: b.low, close: b.close };
+  });
+}
+
+/** Like fetchYahooHistory but with configurable minBars (default 1 for marks). */
+export async function fetchYahooHistoryRelaxed(
+  yahooSymbol: string,
+  range = "3mo",
+  interval = "1d",
+  minBars = 1
+): Promise<YahooHistory | null> {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    yahooSymbol
+  )}?interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        "User-Agent": UA,
+        Accept: "application/json",
+        "Accept-Language": "en-IN,en;q=0.9",
+      },
+      cache: "no-store",
+      signal: AbortSignal.timeout(12000),
+    });
+  } catch {
+    return null;
+  }
+
+  if (!res.ok) return null;
+
+  const data = (await res.json()) as {
+    chart?: {
+      result?: Array<{
+        meta?: {
+          symbol?: string;
+          currency?: string;
+          regularMarketPrice?: number;
+        };
+        timestamp?: number[];
+        indicators?: {
+          quote?: Array<{
+            open?: (number | null)[];
+            high?: (number | null)[];
+            low?: (number | null)[];
+            close?: (number | null)[];
+            volume?: (number | null)[];
+          }>;
+        };
+      }>;
+    };
+  };
+
+  const result = data.chart?.result?.[0];
+  if (!result?.timestamp?.length) return null;
+  const quote = result.indicators?.quote?.[0];
+  if (!quote) return null;
+
+  const bars: Bar[] = [];
+  for (let i = 0; i < result.timestamp.length; i++) {
+    const o = quote.open?.[i];
+    const h = quote.high?.[i];
+    const l = quote.low?.[i];
+    const c = quote.close?.[i];
+    const v = quote.volume?.[i];
+    if (
+      o == null || h == null || l == null || c == null ||
+      !Number.isFinite(o) || !Number.isFinite(h) ||
+      !Number.isFinite(l) || !Number.isFinite(c)
+    ) {
+      continue;
+    }
+    bars.push({
+      date: result.timestamp[i],
+      open: o,
+      high: h,
+      low: l,
+      close: c,
+      volume: v != null && Number.isFinite(v) ? v : 0,
+    });
+  }
+  if (bars.length < minBars) return null;
 
   return {
     symbol: result.meta?.symbol || yahooSymbol,

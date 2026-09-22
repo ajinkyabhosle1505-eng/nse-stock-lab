@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import VerdictCard from "@/components/VerdictCard";
+import PaperBuyButton from "@/components/PaperBuyButton";
 import {
   BUDGET_CHIPS,
   DEFAULT_BUDGET,
   readBudget,
 } from "@/lib/budget";
 import { inr } from "@/lib/format";
-import type { Verdict } from "@/lib/types";
+import type { SkippedSample, Verdict } from "@/lib/types";
 
 interface PicksResponse {
   budget_inr: number;
@@ -23,6 +24,7 @@ interface PicksResponse {
   empty_code?: string;
   reasons?: string[];
   warnings?: string[];
+  skipped_samples?: SkippedSample[];
 }
 
 export default function BudgetPicksPage() {
@@ -68,8 +70,9 @@ export default function BudgetPicksPage() {
           Budget picks
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          What can you paper-buy with ₹X? Live Yahoo scan → up to 10 buys that
-          fit your budget (max 2 per sector). Not a broker.
+          What can you paper-buy with ₹X? Live Yahoo scan → diversified buys that
+          fit your budget (≤₹5k: max 1/sector; else max 2). Soft-demotes
+          mega-PSU repeats. Not a broker.
         </p>
       </header>
 
@@ -117,7 +120,7 @@ export default function BudgetPicksPage() {
           />
           <p className="mt-1 text-xs text-slate-500">
             Risk ₹ = {inr(budget * (riskPct / 100))} · shares = floor(risk /
-            (entry − SL))
+            (entry − SL)); afford-one-share fallback when risk% yields 0.
           </p>
         </div>
 
@@ -168,8 +171,67 @@ export default function BudgetPicksPage() {
               </p>
             ) : null
           ) : (
-            data.picks.map((v) => <VerdictCard key={v.ticker} v={v} />)
+            data.picks.map((v) => (
+              <div key={v.ticker} className="space-y-2">
+                <VerdictCard v={v} />
+                {v.plain_why ? (
+                  <p className="px-1 text-xs leading-relaxed text-slate-400">
+                    Why buy: {v.plain_why}
+                  </p>
+                ) : null}
+                {typeof v.entry === "number" ? (
+                  <PaperBuyButton
+                    input={{
+                      ticker: v.ticker,
+                      yahoo_symbol: v.yahoo_symbol,
+                      entry: v.entry,
+                      sl: v.sl,
+                      targets: v.sell_targets?.length
+                        ? v.sell_targets
+                        : v.targets,
+                      qty: v.shares ?? 1,
+                      budget_inr: data.budget_inr,
+                      sector: v.sector,
+                      action: v.action,
+                      atr_14:
+                        typeof (v as Verdict & { atr_14?: number }).atr_14 ===
+                        "number"
+                          ? (v as Verdict & { atr_14?: number }).atr_14
+                          : null,
+                      structure: (v as Verdict & { structure?: string })
+                        .structure,
+                      breakout_state: (
+                        v as Verdict & { breakout_state?: string }
+                      ).breakout_state,
+                    }}
+                  />
+                ) : null}
+              </div>
+            ))
           )}
+          {data.skipped_samples?.length ? (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4 space-y-2">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Why others were skipped (sample)
+              </h2>
+              {data.skipped_samples.map((s) => (
+                <div
+                  key={s.ticker}
+                  className="rounded-xl border border-slate-800 bg-slate-950/40 px-3 py-2 text-xs text-slate-300"
+                >
+                  <span className="font-semibold text-slate-100">{s.ticker}</span>
+                  {s.sector ? (
+                    <span className="text-slate-500"> · {s.sector}</span>
+                  ) : null}
+                  {s.cmp != null ? (
+                    <span className="text-slate-500"> · CMP {inr(s.cmp)}</span>
+                  ) : null}
+                  <span className="text-slate-500"> · {s.action}</span>
+                  <p className="mt-1 text-slate-400">{s.plain_why_skip}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

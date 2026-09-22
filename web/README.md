@@ -16,7 +16,7 @@ Mobile-first **Next.js (App Router) + TypeScript + Tailwind** progressive web ap
 | `/budget-picks` | Budget + risk% → scan ~22 NSE names → top 10 buys that fit sizing |
 | `/screen` | Budget-aware screener (~50 Nifty50-ish) with sector / PE / ROE / volume filters → links to Lookup |
 | `/report` | Daily report from `public/data/daily_report.json` |
-| `/paper` | Paper ledger fills; unrealized shows **UNKNOWN** when unmarked |
+| `/paper` | Paper scenario path (ATR) scoreboard (`atr_piecewise_T1_T2_v1`) + optional fixture ledger |
 
 Sticky SEBI banner on every screen. Bottom nav: Budget · Lookup · Screen · Ideas · Picks · Report · Paper.
 
@@ -47,7 +47,7 @@ Also `GET /api/screen?budget_inr=10000` for curl smoke.
 
 Body: `{ "budget_inr": 10000, "risk_pct": 1 }`
 
-Universe (~23, multi-sector): SBIN, HDFCBANK, ICICIBANK, AXISBANK, PNB, ONGC, NTPC, COALINDIA, RELIANCE, INFY, TCS, WIPRO, SUNPHARMA, CIPLA, TATAMOTORS, MARUTI, ITC, HINDUNILVR, TATASTEEL, NMDC, LT, IRFC, BHARTIARTL.
+Universe (~33, multi-sector): banks (incl. BANKBARODA, CANBK), energy (IOC, BPCL, POWERGRID, TATAPOWER), metals (VEDL), infra (PFC, RECLTD), BEL, plus prior liquid names. Sector round-robin (≤₹5k → max 1/sector; else max 2). Soft-demote mega-PSU repeats (−18).
 
 Returns up to **10 buys** where `shares >= 1` and `entry * shares <= budget_inr`.
 
@@ -58,6 +58,14 @@ Returns up to **10 buys** where `shares >= 1` and `entry * shares <= budget_inr`
 **P1:** plain-language reason lines + plan ladder / 30d sparkline on idea detail.
 
 Also available as `GET /api/budget-picks?budget_inr=10000&risk_pct=1` for curl smoke tests.
+
+### `POST /api/paper/buy`
+
+Body: `{ ticker, entry, sl?, targets?, qty, budget_inr, checkDays, atr_14?, structure?, breakout_state? }` → builds **Paper scenario path (ATR)** method `atr_piecewise_T1_T2_v1` (Stock Research brief). Skips forecast if entry/sl/atr/T1 missing. Client also persists to `localStorage` key `nse-stock-lab-paper-forecasts-v1`.
+
+### `POST /api/paper/mark-forecasts`
+
+Marks due check days with Yahoo **daily close** on/after targetDate (±3 calendar days). Never invents CMP — `sparse`/`error` + UNKNOWN. Scoreboard shows APE/MAPE, hit bands, directional, T1/T2/SL touch; no skill claim until n≥20 fills.
 
 ## Quick start
 

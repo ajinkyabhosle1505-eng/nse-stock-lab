@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import VerdictCard from "@/components/VerdictCard";
 import PlanChart from "@/components/PlanChart";
 import Sparkline from "@/components/Sparkline";
+import PaperBuyButton from "@/components/PaperBuyButton";
 import type { LookupResponse } from "@/lib/types";
 import { actionClass, inr, num } from "@/lib/format";
 import { enrichPlanFields } from "@/lib/plan";
@@ -175,7 +176,28 @@ function LookupPage() {
                 <p className="mb-1 text-[10px] uppercase tracking-wider text-slate-500">
                   ~{(closes as number[]).length}-day closes
                 </p>
-                <Sparkline closes={closes as number[]} />
+                <Sparkline
+                  closes={closes as number[]}
+                  entry={
+                    typeof verd.entry === "number"
+                      ? verd.entry
+                      : typeof verd.buy_trigger === "number"
+                        ? verd.buy_trigger
+                        : null
+                  }
+                  sl={
+                    typeof verd.sl === "number"
+                      ? verd.sl
+                      : typeof verd.stop_invalidation === "number"
+                        ? verd.stop_invalidation
+                        : null
+                  }
+                  targets={
+                    verd.sell_targets?.length
+                      ? verd.sell_targets
+                      : verd.targets
+                  }
+                />
               </div>
             ) : (
               <p className="rounded-xl border border-dashed border-slate-700 bg-slate-950/40 px-3 py-4 text-center text-sm text-slate-500">
@@ -281,43 +303,55 @@ function LookupPage() {
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <Item
                 label="funda_quality"
-                value={String(data.funda.fields.funda_quality ?? "UNKNOWN")}
+                value={
+                  data.funda.fields.funda_quality != null
+                    ? String(data.funda.fields.funda_quality)
+                    : "—"
+                }
               />
-              <Item
-                label="PE / ROE / D-E"
-                value={[
-                  data.funda.fields.pe_ttm != null ? `PE ${data.funda.fields.pe_ttm}` : null,
-                  data.funda.fields.roe_pct != null ? `ROE ${data.funda.fields.roe_pct}` : null,
-                  data.funda.fields.debt_equity != null
-                    ? `D/E ${data.funda.fields.debt_equity}`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "UNKNOWN"}
-              />
+              <Item label="PE (TTM)" value={fmtKnown(data.funda.fields.pe_ttm)} />
+              <Item label="ROE %" value={fmtKnown(data.funda.fields.roe_pct)} />
+              <Item label="D/E" value={fmtKnown(data.funda.fields.debt_equity)} />
             </dl>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-500">Headline</p>
               <p className="mt-0.5 text-sm text-slate-100">
-                {String(data.news.fields.headline ?? "UNKNOWN")}
+                {data.news.fields.headline
+                  ? String(data.news.fields.headline)
+                  : "— (no live headline)"}
               </p>
               {data.news.fields.why_for_verdict ? (
                 <p className="mt-1 text-xs text-slate-400">
                   why: {String(data.news.fields.why_for_verdict)}
                 </p>
               ) : null}
-              <p className="mt-1 text-[10px] text-slate-500">
-                {String(data.news.fields.confirmation_status ?? "?")} ·{" "}
-                {String(data.news.fields.catalyst_strength ?? "?")} · expiry{" "}
-                {String(data.news.fields.catalyst_expiry ?? "null")}
-              </p>
+              {data.news.fields.confirmation_status != null ||
+              data.news.fields.catalyst_strength != null ? (
+                <p className="mt-1 text-[10px] text-slate-500">
+                  {data.news.fields.confirmation_status
+                    ? String(data.news.fields.confirmation_status)
+                    : "—"}{" "}
+                  ·{" "}
+                  {data.news.fields.catalyst_strength
+                    ? String(data.news.fields.catalyst_strength)
+                    : "—"}{" "}
+                  · expiry{" "}
+                  {data.news.fields.catalyst_expiry != null
+                    ? String(data.news.fields.catalyst_expiry)
+                    : "—"}
+                </p>
+              ) : null}
             </div>
-            <p className="text-xs text-slate-500">
-              Funda unknowns: {data.funda.unknowns.join(", ") || "—"}
-            </p>
-            <p className="text-xs text-slate-500">
-              News unknowns: {data.news.unknowns.join(", ") || "—"}
-            </p>
+            {data.funda.unknowns?.length ? (
+              <p className="text-xs text-slate-500">
+                Still missing: {data.funda.unknowns.join(", ")}
+              </p>
+            ) : null}
+            {data.news.unknowns?.length ? (
+              <p className="text-xs text-slate-500">
+                News missing: {data.news.unknowns.join(", ")}
+              </p>
+            ) : null}
             <p className="text-[10px] text-slate-600">
               {data.funda.note} · {data.news.note}
             </p>
@@ -333,6 +367,30 @@ function LookupPage() {
                 size {inr(data.verdict.size_inr ?? undefined)}
               </span>
             </p>
+            {verd.action === "buy" && typeof verd.entry === "number" ? (
+              <PaperBuyButton
+                input={{
+                  ticker: data.ticker,
+                  yahoo_symbol: data.yahoo_symbol,
+                  entry: verd.entry,
+                  sl: typeof verd.sl === "number" ? verd.sl : null,
+                  targets: verd.sell_targets?.length
+                    ? verd.sell_targets
+                    : verd.targets,
+                  qty: verd.shares ?? 1,
+                  budget_inr:
+                    typeof verd.size_inr === "number" ? verd.size_inr : undefined,
+                  atr_14:
+                    typeof data.tech.fields.atr_14 === "number"
+                      ? data.tech.fields.atr_14
+                      : null,
+                  structure: String(data.tech.fields.structure || ""),
+                  breakout_state: String(data.tech.fields.breakout_state || ""),
+                  sector: verd.sector,
+                  action: verd.action,
+                }}
+              />
+            ) : null}
           </section>
         </div>
       ) : null}
@@ -343,6 +401,14 @@ function LookupPage() {
 function fmt(v: number | "UNKNOWN" | undefined): string {
   if (v === "UNKNOWN" || v == null) return "UNKNOWN";
   return num(v);
+}
+
+/** Show real funda numbers; use em-dash when truly missing — never label filled fields UNKNOWN. */
+function fmtKnown(v: unknown): string {
+  if (v == null || v === "UNKNOWN") return "—";
+  if (typeof v === "number" && Number.isFinite(v)) return num(v);
+  if (typeof v === "string" && v.trim()) return v;
+  return "—";
 }
 
 function Item({ label, value }: { label: string; value: string }) {

@@ -27,6 +27,17 @@ export interface Verdict {
   live?: boolean;
   yahoo_symbol?: string;
   note?: string;
+  sizing_mode?: "risk_pct" | "afford_one_share" | string;
+  /** Plain-language why buy (budget picks). */
+  plain_why?: string;
+}
+
+export interface SkippedSample {
+  ticker: string;
+  action: string;
+  sector?: string | null;
+  cmp?: number | null;
+  plain_why_skip: string;
 }
 
 export interface VerdictsFile {
@@ -75,6 +86,95 @@ export interface Fill {
   confidence_1_10?: number;
   mark?: number | null;
   mark_note?: string;
+}
+
+/** Paper forecast point — Stock Research brief atr_piecewise_T1_T2_v1 */
+export type ForecastPointStatus = "pending" | "scored" | "sparse" | "error";
+
+export interface ForecastPoint {
+  dayOffset: number;
+  predictedClose: number;
+  targetDate: string;
+  actualClose: number | null;
+  actualSessionDate: string | null;
+  ape_pct: number | null;
+  within_1atr: boolean | null;
+  within_2pct: boolean | null;
+  within_0_5r: boolean | null;
+  direction_ok: boolean | null;
+  status: ForecastPointStatus;
+  tradingDayIndex?: number | null;
+  corporate_action_suspect?: boolean;
+}
+
+export interface ForecastScoreSummary {
+  n_scored: number;
+  mape_pct: number | null;
+  hit_within_1atr_pct: number | null;
+  hit_within_2pct_pct: number | null;
+  hit_within_0_5r_pct: number | null;
+  directional_pct: number | null;
+  by_horizon: {
+    bucket: "le7" | "8to21" | "ge22";
+    n: number;
+    mape_pct: number | null;
+    hit_within_1atr_pct: number | null;
+    directional_pct: number | null;
+  }[];
+  touched_t1: boolean | null;
+  touched_t2: boolean | null;
+  touched_sl: boolean | null;
+  lastMarkedAt: string | null;
+}
+
+export interface ForecastBundle {
+  method: "atr_piecewise_T1_T2_v1";
+  status?: "ok" | "skipped";
+  skip_reason?: string;
+  createdAt: string;
+  params: {
+    entry: number;
+    sl: number;
+    t1: number;
+    t2: number;
+    atr_14: number;
+    R: number;
+    d_T1: number;
+    d_T2: number;
+    scale: number;
+    structure?: string;
+    breakout_state?: string;
+  };
+  checkDays: number[];
+  points: ForecastPoint[];
+  scoreSummary: ForecastScoreSummary;
+}
+
+export type PaperFillWithForecast = Fill & {
+  yahoo_symbol: string;
+  budget_inr?: number;
+  forecast?: ForecastBundle | null;
+};
+
+/** Client-stored paper forecast position (localStorage MVP). */
+export interface PaperForecastPosition {
+  id: string;
+  ticker: string;
+  yahoo_symbol: string;
+  entry: number;
+  sl: number | null;
+  targets: number[];
+  qty: number;
+  budget_inr: number;
+  size_inr: number;
+  boughtAt: string;
+  sector?: string | null;
+  checkDays: number[];
+  atr_14?: number | null;
+  structure?: string;
+  breakout_state?: string;
+  sebi_banner: string;
+  forecast: ForecastBundle | null;
 }
 
 export interface LedgerFile {

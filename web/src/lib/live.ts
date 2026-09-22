@@ -15,8 +15,15 @@ import {
   sizePosition,
   type LaneStub,
 } from "./risk";
-import { BUDGET_UNIVERSE, SEBI_BANNER, sectorOf } from "./universe";
-import type { LookupResponse, Verdict } from "./types";
+import { plainReason } from "./plain";
+import {
+  BUDGET_UNIVERSE,
+  SEBI_BANNER,
+  TIGHT_SECTOR_BUDGET_INR,
+  isMegaPsuDemote,
+  sectorOf,
+} from "./universe";
+import type { LookupResponse, SkippedSample, Verdict } from "./types";
 
 export interface LookupOpts {
   budget_inr?: number;
@@ -76,14 +83,10 @@ export async function runLookup(
   const [fundaLane, newsLane] = await Promise.all([
     wantFunda
       ? fetchLiveFunda(ticker, yahoo)
-      : Promise.resolve(
-          unknownFunda(ticker, "Funda fetch skipped")
-        ),
+      : Promise.resolve(unknownFunda(ticker, "Funda fetch skipped")),
     wantNews
       ? fetchLiveNews(ticker, yahoo)
-      : Promise.resolve(
-          unknownNews(ticker, "News fetch skipped")
-        ),
+      : Promise.resolve(unknownNews(ticker, "News fetch skipped")),
   ]);
 
   const funda = toStub(fundaLane);
@@ -139,6 +142,94 @@ export interface BudgetPicksResult {
   empty_code?: "cant_buy_even_one_share" | "risk_too_tight" | "no_buy_setups";
   reasons?: string[];
   warnings?: string[];
+  skipped_samples?: SkippedSample[];
+}
+
+/**
+ * Soft-demote mega-PSU repeats so PNB/COALINDIA cannot own every top list.
+ * Documented: −18 score for MEGA_PSU_DEMOTE names (still eligible).
+ */
+function diversifiedPickScore(v: Verdict): number {
+  let s = pickScore(v);
+  if (isMegaPsuDemote(v.ticker)) s -= 18;
+  return s;
+}
+
+/**
+ * Sector-first round-robin by score with max picks/sector.
+ * budget ≤ TIGHT_SECTOR_BUDGET_INR → max 1/sector; else max 2.
+ */
+function diversifyPicks(
+  buys: Verdict[],
+  budget_inr: number,
+  limit = 10
+): Verdict[] {
+  const maxPerSector = budget_inr <= TIGHT_SECTOR_BUDGET_INR ? 1 : 2;
+  const bySector = new Map<string, Verdict[]>();
+  for (const p of buys) {
+    const sector = p.sector || sectorOf(p.ticker) || "Unknown";
+    const list = bySector.get(sector) || [];
+    list.push(p);
+    bySector.set(sector, list);
+  }
+  for (const [, list] of bySector) {
+    list.sort((a, b) => diversifiedPickScore(b) - diversifiedPickScore(a));
+  }
+
+  const capped: Verdict[] = [];
+  const taken = new Map<string, number>();
+  const queues = [...bySector.entries()].map(([sector, list]) => ({
+    sector,
+    list: [...list],
+  }));
+  // Prefer higher first-pick score when starting a round
+  queues.sort(
+    (a, b) =>
+      diversifiedPickScore(b.list[0] || { confidence_1_10: 0 } as Verdict) -
+      diversifiedPickScore(a.list[0] || { confidence_1_10: 0 } as Verdict)
+  );
+
+  let progressed = true;
+  while (capped.length < limit && progressed) {
+    progressed = false;
+    for (const q of queues) {
+      if (capped.length >= limit) break;
+      const n = taken.get(q.sector) || 0;
+      if (n >= maxPerSector) continue;
+      while (q.list.length) {
+        const next = q.list.shift()!;
+        // already used? (shouldn't)
+        if (capped.some((c) => c.ticker === next.ticker)) continue;
+        capped.push(next);
+        taken.set(q.sector, n + 1);
+        progressed = true;
+        break;
+      }
+    }
+  }
+  return capped;
+}
+
+function plainWhyBuy(v: Verdict): string {
+  const raw = v.reasons?.[0] || v.risk_flags?.[0] || "Tape/funda gates favor paper long";
+  return plainReason(String(raw));
+}
+
+function plainWhySkip(v: Verdict): string {
+  if (v.action === "avoid") {
+    return plainReason(v.avoids_note || v.reasons?.[0] || "Avoid — skip fresh paper long");
+  }
+  if (v.insufficient_data) {
+    return "Price data missing from Yahoo — not invented";
+  }
+  const sizeFlag = v.risk_flags?.find((f) => f.startsWith("size_blocked:"));
+  if (sizeFlag) {
+    return plainReason(
+      v.reasons?.find((r) => /size blocked/i.test(r)) ||
+        `Tape favors long but size blocked (${sizeFlag.replace("size_blocked:", "")})`
+    );
+  }
+  return plainReason(v.reasons?.[0] || `Action=${v.action} — no paper buy`);
 }
 
 /**
@@ -164,6 +255,7 @@ export async function runBudgetPicks(
   });
 
   const buys: Verdict[] = [];
+  const nonBuys: Verdict[] = [];
   const warnings: string[] = [];
   let sawBuySetup = false;
   let sawAffordableCmp = false;
@@ -174,8 +266,17 @@ export async function runBudgetPicks(
     if (Number.isFinite(cmp) && cmp > 0 && cmp <= budget_inr) sawAffordableCmp = true;
     const v = lu.verdict;
     if (v.action === "buy") sawBuySetup = true;
-    if (v.action !== "buy") continue;
-    if (v.entry == null || v.sl == null) continue;
+
+    if (v.action !== "buy") {
+      nonBuys.push(v);
+      continue;
+    }
+    if (v.entry == null || v.sl == null) {
+      nonBuys.push(v);
+      continue;
+    }
+
+    // Re-size so afford_one_share path is honored when ok
     const sized = sizePosition({
       budget_inr,
       risk_pct,
@@ -183,26 +284,55 @@ export async function runBudgetPicks(
       sl: v.sl,
     });
     if (!sized.ok) {
-      if (sized.reason === "cant_buy_even_one_share") {
-        /* tracked via sawAffordableCmp */
-      } else if (sized.reason === "shares<1" || sized.reason === "afford_one_share") {
-      }
+      nonBuys.push({
+        ...v,
+        action: "hold",
+        reasons: [
+          ...(v.reasons || []),
+          `Size blocked (${sized.reason})`,
+        ],
+        risk_flags: [...(v.risk_flags || []), `size_blocked:${sized.reason}`],
+      });
       continue;
     }
-    if (sized.shares < 1) continue;
-    if (v.entry * sized.shares > budget_inr) continue;
+    if (sized.shares < 1) {
+      nonBuys.push(v);
+      continue;
+    }
+    if (v.entry * sized.shares > budget_inr) {
+      nonBuys.push({
+        ...v,
+        reasons: [...(v.reasons || []), "Notional exceeds budget after sizing"],
+      });
+      continue;
+    }
     if (sized.reason === "afford_one_share") {
       warnings.push(
         `${v.ticker}: classic ${risk_pct}% risk could not fund a share, so we sized 1+ shares to fit ₹${budget_inr}. Money at risk may exceed ${risk_pct}% of budget.`
       );
     }
     const sector =
-      (typeof (lu.funda as { fields?: { sector?: string } })?.fields?.sector === "string"
+      (typeof (lu.funda as { fields?: { sector?: string } })?.fields?.sector ===
+      "string"
         ? (lu.funda as { fields?: { sector?: string } }).fields?.sector
         : null) ||
-      (v as Verdict & { sector?: string }).sector ||
+      v.sector ||
       sectorOf(v.ticker);
-    buys.push({
+
+    const techFields = lu.tech?.fields as {
+      atr_14?: number | string;
+      structure?: string;
+      breakout_state?: string;
+    } | undefined;
+    const atrRaw = techFields?.atr_14;
+    const atr_14 =
+      typeof atrRaw === "number" && Number.isFinite(atrRaw) ? atrRaw : undefined;
+
+    const pick: Verdict & {
+      atr_14?: number;
+      structure?: string;
+      breakout_state?: string;
+    } = {
       ...v,
       shares: sized.shares,
       size_inr: sized.size_inr,
@@ -210,24 +340,42 @@ export async function runBudgetPicks(
       sell_targets: v.sell_targets?.length ? v.sell_targets : v.targets,
       stop_invalidation: v.stop_invalidation ?? v.sl,
       time_horizon: v.time_horizon ?? "2–6 weeks (swing)",
-      sizing_mode: sized.reason === "afford_one_share" ? "afford_one_share" : "risk_pct",
+      sizing_mode:
+        sized.reason === "afford_one_share" ? "afford_one_share" : "risk_pct",
       sector,
-    } as Verdict);
+      plain_why: plainWhyBuy(v),
+      atr_14,
+      structure:
+        typeof techFields?.structure === "string"
+          ? techFields.structure
+          : undefined,
+      breakout_state:
+        typeof techFields?.breakout_state === "string"
+          ? techFields.breakout_state
+          : undefined,
+    };
+    buys.push(pick);
   }
 
-  buys.sort((a, b) => pickScore(b) - pickScore(a));
+  buys.sort((a, b) => diversifiedPickScore(b) - diversifiedPickScore(a));
+  const capped = diversifyPicks(buys, budget_inr, 10);
 
-  // P0b: max 2 picks per sector
-  const sectorCount = new Map<string, number>();
-  const capped: Verdict[] = [];
-  for (const p of buys) {
-    const sector = (p as Verdict & { sector?: string }).sector || "Unknown";
-    const n = sectorCount.get(sector) || 0;
-    if (n >= 2) continue;
-    sectorCount.set(sector, n + 1);
-    capped.push(p);
-    if (capped.length >= 10) break;
-  }
+  // Skipped samples for transparency (3–5), prefer affordable CMPs
+  const skipped_samples: SkippedSample[] = nonBuys
+    .slice()
+    .sort((a, b) => {
+      const ca = typeof a.cmp === "number" ? a.cmp : 1e12;
+      const cb = typeof b.cmp === "number" ? b.cmp : 1e12;
+      return ca - cb;
+    })
+    .slice(0, 5)
+    .map((v) => ({
+      ticker: v.ticker,
+      action: String(v.action),
+      sector: v.sector || sectorOf(v.ticker),
+      cmp: typeof v.cmp === "number" ? v.cmp : null,
+      plain_why_skip: plainWhySkip(v),
+    }));
 
   let empty_code: BudgetPicksResult["empty_code"];
   const reasons: string[] = [];
@@ -239,7 +387,9 @@ export async function runBudgetPicks(
       );
     } else if (!sawBuySetup) {
       empty_code = "no_buy_setups";
-      reasons.push("No buy setups in the scanned book right now (tape/funda gates).");
+      reasons.push(
+        "No buy setups in the scanned book right now (tape/funda gates)."
+      );
     } else {
       empty_code = "risk_too_tight";
       reasons.push(
@@ -253,6 +403,9 @@ export async function runBudgetPicks(
     }
   }
 
+  const maxPer =
+    budget_inr <= TIGHT_SECTOR_BUDGET_INR ? "max 1/sector" : "max 2/sector";
+
   return {
     budget_inr,
     risk_pct,
@@ -262,9 +415,10 @@ export async function runBudgetPicks(
     universe,
     picks: capped,
     scanned: universe.length,
-    note: "Live Yahoo tech + HTTP funda + TS mergeVerdict (news skipped for speed). Vercel-safe. Max 2 picks/sector.",
+    note: `Live Yahoo tech + HTTP funda + TS mergeVerdict (news skipped). Sector round-robin (${maxPer}); soft-demote mega-PSU repeats (−18). Vercel-safe.`,
     empty_code,
     reasons: reasons.length ? reasons : undefined,
     warnings: warnings.length ? warnings : undefined,
+    skipped_samples: skipped_samples.length ? skipped_samples : undefined,
   };
 }
