@@ -1,8 +1,12 @@
-import { getDailyReport } from "@/lib/data";
+import { getDailyReport, getVerdicts, normalizeDailyReport } from "@/lib/data";
 import { inr } from "@/lib/format";
 
 export default async function ReportPage() {
-  const report = await getDailyReport();
+  const [rawReport, verdicts] = await Promise.all([
+    getDailyReport(),
+    getVerdicts().catch(() => null),
+  ]);
+  const report = normalizeDailyReport(rawReport, verdicts);
   const sections = (report.sections || {}) as Record<string, Record<string, unknown>>;
   const market = sections["1_market_overview"] || {};
   const top10 = (sections["2_top10_under_1000"]?.items || []) as Array<Record<string, unknown>>;
@@ -22,6 +26,9 @@ export default async function ReportPage() {
         <h1 className="text-2xl font-bold tracking-tight text-white">Daily report</h1>
         <p className="mt-1 text-sm text-slate-400">
           {(report.report_id as string) || "report"} · as of {String(report.as_of || "—")}
+        </p>
+        <p className="mt-1 text-[11px] text-amber-300">
+          Desk fixture snapshot (not live) — automated daily report is coming next.
         </p>
       </header>
 

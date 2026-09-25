@@ -82,7 +82,7 @@ function PaperPageInner() {
       const s = p.forecast.scoreSummary;
       n_scored += s.n_scored;
       for (const pt of p.forecast.points) {
-        if (pt.status !== "scored" || pt.ape_pct == null) continue;
+        if (pt.status !== "scored" || pt.ape_pct == null || pt.corporate_action_suspect) continue;
         apes.push(pt.ape_pct);
         const b =
           pt.dayOffset <= 7 ? "le7" : pt.dayOffset <= 21 ? "8to21" : "ge22";

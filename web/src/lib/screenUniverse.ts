@@ -34,7 +34,7 @@ export const SCREEN_UNIVERSE = [
   "DRREDDY",
   "DIVISLAB",
   // Auto
-  "TATAMOTORS",
+  "TMPV", // Tata Motors Passenger Vehicles (TATAMOTORS.NS delisted on Yahoo after demerger; TMPV.NS verified 2026-09-25)
   "MARUTI",
   "M&M",
   "BAJAJ-AUTO",
@@ -95,7 +95,7 @@ const SECTOR: Record<string, string> = {
   CIPLA: "Pharma",
   DRREDDY: "Pharma",
   DIVISLAB: "Pharma",
-  TATAMOTORS: "Auto",
+  TMPV: "Auto",
   MARUTI: "Auto",
   "M&M": "Auto",
   "BAJAJ-AUTO": "Auto",

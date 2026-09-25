@@ -26,7 +26,7 @@ export const BUDGET_UNIVERSE = [
   "SUNPHARMA",
   "CIPLA",
   // Auto
-  "TATAMOTORS",
+  "TMPV", // Tata Motors Passenger Vehicles (TATAMOTORS.NS delisted on Yahoo after demerger; TMPV.NS verified 2026-09-25)
   "MARUTI",
   // FMCG
   "ITC",
@@ -68,7 +68,7 @@ const SECTOR: Record<string, string> = {
   WIPRO: "IT",
   SUNPHARMA: "Pharma",
   CIPLA: "Pharma",
-  TATAMOTORS: "Auto",
+  TMPV: "Auto",
   MARUTI: "Auto",
   ITC: "FMCG",
   HINDUNILVR: "FMCG",

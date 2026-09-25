@@ -256,67 +256,88 @@ export interface MarkBar {
   close: number;
 }
 
+export interface MarkOptions {
+  /**
+   * Last IST session date whose daily close is final (e.g. from
+   * nseCalendar.lastFinalSession). Bars after it (intraday partial) are ignored.
+   */
+  finalThrough?: string;
+}
+
+function calDays(fromIso: string, toIso: string): number {
+  const a = Date.parse(`${fromIso}T00:00:00+05:30`);
+  const b = Date.parse(`${toIso}T00:00:00+05:30`);
+  return Math.round((b - a) / 86400000);
+}
+
 /**
- * Mark pending points with Yahoo daily closes.
- * Prefer close on/after targetDate within ±3 calendar days; else sparse.
+ * Mark due points with Yahoo daily closes (brief §1/§3):
+ * - Only `pending` (and retryable `error`) points are touched; `scored` and
+ *   `sparse` are final and never rewritten.
+ * - First session close on/after targetDate within 3 calendar days → scored.
+ *   No such bar yet and the 3-day window still open → stays pending.
+ *   Window closed with no bar → sparse (actualClose=null, never invented).
+ * - >15% close-to-close gap vs prior session → corporate_action_suspect.
+ * - Predictions / checkDays / params are never modified here.
  */
 export function markForecastPoints(
   bundle: ForecastBundle,
   bars: MarkBar[],
-  todayIst?: string
+  todayIst?: string,
+  opts: MarkOptions = {}
 ): ForecastBundle {
   if (bundle.status === "skipped" || !bundle.points.length) return bundle;
 
   const today = todayIst || istDateString();
+  const finalThrough = opts.finalThrough && opts.finalThrough < today ? opts.finalThrough : today;
   const { entry, atr_14, R, t1, t2, sl } = bundle.params;
   const atrPctGate = Math.max(1.0, (100 * atr_14) / entry) / 100; // fraction of entry
+  // Fill (day-0) IST date is exactly recoverable from the frozen points:
+  // targetDate = fillDate + dayOffset (calendar). Don't rely on createdAt.
+  const p0 = bundle.points[0];
+  const fillDate = addCalendarDays(p0.targetDate, -p0.dayOffset);
 
-  const sorted = [...bars].sort((a, b) => a.date.localeCompare(b.date));
+  const sorted = [...bars]
+    .filter((b) => b.date <= finalThrough)
+    .sort((a, b) => a.date.localeCompare(b.date));
 
-  const points = bundle.points.map((p) => {
-    if (p.targetDate > today) {
-      return { ...p, status: "pending" as const };
-    }
-    // Find first bar on/after targetDate
+  const blank = {
+    actualClose: null,
+    actualSessionDate: null,
+    ape_pct: null,
+    within_1atr: null,
+    within_2pct: null,
+    within_0_5r: null,
+    direction_ok: null,
+  };
+
+  const points = bundle.points.map((p): ForecastPoint => {
+    if (p.status === "scored" || p.status === "sparse") return p;
+    if (p.targetDate > today) return { ...p, status: "pending" };
+
     const idx = sorted.findIndex((b) => b.date >= p.targetDate);
+    const windowOpen = calDays(p.targetDate, finalThrough) < 3;
     if (idx < 0) {
-      return {
-        ...p,
-        actualClose: null,
-        actualSessionDate: null,
-        ape_pct: null,
-        within_1atr: null,
-        within_2pct: null,
-        within_0_5r: null,
-        direction_ok: null,
-        status: "sparse" as const,
-      };
+      return windowOpen
+        ? { ...p, ...blank, status: "pending" }
+        : { ...p, ...blank, status: "sparse" };
     }
     const bar = sorted[idx];
-    // Within 3 calendar days of target?
-    const targetMs = Date.parse(`${p.targetDate}T00:00:00+05:30`);
-    const barMs = Date.parse(`${bar.date}T00:00:00+05:30`);
-    const calDiff = Math.round((barMs - targetMs) / 86400000);
+    const calDiff = calDays(p.targetDate, bar.date);
     if (calDiff < 0 || calDiff > 3) {
-      return {
-        ...p,
-        actualClose: null,
-        actualSessionDate: null,
-        status: "sparse" as const,
-        ape_pct: null,
-        within_1atr: null,
-        within_2pct: null,
-        within_0_5r: null,
-        direction_ok: null,
-      };
+      return { ...p, ...blank, status: "sparse" };
     }
 
-    // Corporate action suspect: >15% gap vs prior close
+    // Corporate action suspect: any >15% close-to-close gap between the fill
+    // session and the scoring session (possible split/bonus on raw closes).
+    // Such points keep their actual but are EXCLUDED from accuracy stats.
     let corporate_action_suspect = false;
-    if (idx > 0) {
-      const prior = sorted[idx - 1].close;
-      if (prior > 0 && Math.abs(bar.close - prior) / prior > 0.15) {
+    for (let k = 1; k <= idx; k++) {
+      if (sorted[k].date <= fillDate) continue;
+      const prior = sorted[k - 1].close;
+      if (prior > 0 && Math.abs(sorted[k].close - prior) / prior > 0.15) {
         corporate_action_suspect = true;
+        break;
       }
     }
 
@@ -331,6 +352,9 @@ export function markForecastPoints(
     const dirAct = sign(actual - entry);
     const direction_ok =
       dirPred === 0 || dirAct === 0 ? false : dirPred === dirAct;
+    const tradingDayIndex = sorted.filter(
+      (b) => b.date > fillDate && b.date <= bar.date
+    ).length;
 
     return {
       ...p,
@@ -341,36 +365,47 @@ export function markForecastPoints(
       within_2pct,
       within_0_5r,
       direction_ok,
-      status: "scored" as const,
-      tradingDayIndex: idx,
+      status: "scored",
+      tradingDayIndex,
       corporate_action_suspect,
     };
   });
 
-  // Level touch flags from bars spanning fill→max check
-  let touched_t1: boolean | null = null;
-  let touched_t2: boolean | null = null;
-  let touched_sl: boolean | null = null;
-  const scoredPts = points.filter((p) => p.status === "scored");
-  if (scoredPts.length && sorted.length) {
+  // Level touch flags (fill-level): sessions after the fill day through the
+  // max check day's session (or the last final session if earlier).
+  const lastScoredSession = points
+    .map((p) => p.actualSessionDate)
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1);
+  const maxTarget = points.map((p) => p.targetDate).sort().at(-1) || finalThrough;
+  const touchEnd =
+    lastScoredSession && lastScoredSession > maxTarget
+      ? lastScoredSession
+      : maxTarget < finalThrough
+        ? maxTarget
+        : finalThrough;
+  const windowBars = sorted.filter((b) => b.date > fillDate && b.date <= touchEnd);
+  const prev = bundle.scoreSummary;
+  let touched_t1: boolean | null = prev?.touched_t1 ?? null;
+  let touched_t2: boolean | null = prev?.touched_t2 ?? null;
+  let touched_sl: boolean | null = prev?.touched_sl ?? null;
+  const coversFill = sorted.length > 0 && sorted[0].date <= fillDate;
+  if (windowBars.length && coversFill) {
     touched_t1 = false;
     touched_t2 = false;
     touched_sl = false;
-    for (const b of sorted) {
-      if (b.low <= t1 && b.high >= t1) touched_t1 = true;
-      if (b.low <= t2 && b.high >= t2) touched_t2 = true;
-      if (b.low <= sl && b.high >= sl) touched_sl = true;
-      if (b.close >= t1) touched_t1 = true;
-      if (b.close >= t2) touched_t2 = true;
-      if (b.close <= sl) touched_sl = true;
+    for (const b of windowBars) {
+      if (b.high >= t1 || b.close >= t1) touched_t1 = true;
+      if (b.high >= t2 || b.close >= t2) touched_t2 = true;
+      if (b.low <= sl || b.close <= sl) touched_sl = true;
     }
   }
 
-  const scoreSummary = computeScoreSummary(points, {
-    touched_t1,
-    touched_t2,
-    touched_sl,
-  });
+  const scoreSummary = {
+    ...computeScoreSummary(points, { touched_t1, touched_t2, touched_sl }),
+    lastMarkedAt: new Date().toISOString(),
+  };
 
   return {
     ...bundle,
@@ -387,7 +422,9 @@ export function computeScoreSummary(
     touched_sl: boolean | null;
   }
 ): ForecastScoreSummary {
-  const scored = points.filter((p) => p.status === "scored" && p.actualClose != null);
+  const scored = points.filter(
+    (p) => p.status === "scored" && p.actualClose != null && !p.corporate_action_suspect
+  );
   const apes = scored.map((p) => p.ape_pct!).filter((x) => x != null);
   const w1 = scored.map((p) => !!p.within_1atr);
   const w2 = scored.map((p) => !!p.within_2pct);

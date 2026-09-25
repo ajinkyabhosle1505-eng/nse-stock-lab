@@ -364,16 +364,44 @@ export async function fetchYahooDailyBars(
 ): Promise<{ date: string; open: number; high: number; low: number; close: number }[] | null> {
   const hist = await fetchYahooHistoryRelaxed(yahooSymbol, range, "1d", 1);
   if (!hist?.bars?.length) return null;
-  return hist.bars.map((b) => {
-    const d = new Date(b.date * 1000);
-    const date = new Intl.DateTimeFormat("en-CA", {
-      timeZone: "Asia/Kolkata",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(d);
+  const mapped = hist.bars.map((b) => {
+    const date = istDate(b.date * 1000);
     return { date, open: b.open, high: b.high, low: b.low, close: b.close };
   });
+  return dropUnsettledTodayBar(mapped, hist.regularEnd);
+}
+
+function istDate(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(ms));
+}
+
+/**
+ * During NSE hours Yahoo v8 `interval=1d` already returns a bar for TODAY whose
+ * close is the live LTP (verified 2026-09-25). That is not a close. Drop the
+ * bar dated today (IST) unless now ≥ meta.currentTradingPeriod.regular.end
+ * + 30 min (fallback when the field is missing: 16:00 IST).
+ */
+export function dropUnsettledTodayBar<T extends { date: string }>(
+  bars: T[],
+  regularEndSec: number | null,
+  nowMs: number = Date.now()
+): T[] {
+  if (!bars.length) return bars;
+  const today = istDate(nowMs);
+  const last = bars[bars.length - 1];
+  if (last.date !== today) return bars;
+  let settledAtMs: number;
+  if (regularEndSec != null && istDate(regularEndSec * 1000) === today) {
+    settledAtMs = regularEndSec * 1000 + 30 * 60 * 1000;
+  } else {
+    settledAtMs = Date.parse(`${today}T16:00:00+05:30`);
+  }
+  return nowMs >= settledAtMs ? bars : bars.slice(0, -1);
 }
 
 /** Like fetchYahooHistory but with configurable minBars (default 1 for marks). */
@@ -382,7 +410,7 @@ export async function fetchYahooHistoryRelaxed(
   range = "3mo",
   interval = "1d",
   minBars = 1
-): Promise<YahooHistory | null> {
+): Promise<(YahooHistory & { regularEnd: number | null }) | null> {
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     yahooSymbol
   )}?interval=${encodeURIComponent(interval)}&range=${encodeURIComponent(range)}`;
@@ -411,6 +439,7 @@ export async function fetchYahooHistoryRelaxed(
           symbol?: string;
           currency?: string;
           regularMarketPrice?: number;
+          currentTradingPeriod?: { regular?: { start?: number; end?: number } };
         };
         timestamp?: number[];
         indicators?: {
@@ -421,6 +450,7 @@ export async function fetchYahooHistoryRelaxed(
             close?: (number | null)[];
             volume?: (number | null)[];
           }>;
+          adjclose?: Array<{ adjclose?: (number | null)[] }>;
         };
       }>;
     };
@@ -456,7 +486,9 @@ export async function fetchYahooHistoryRelaxed(
   }
   if (bars.length < minBars) return null;
 
+  const regularEnd = result.meta?.currentTradingPeriod?.regular?.end;
   return {
+    regularEnd: typeof regularEnd === "number" ? regularEnd : null,
     symbol: result.meta?.symbol || yahooSymbol,
     currency: result.meta?.currency ?? null,
     regularMarketPrice:

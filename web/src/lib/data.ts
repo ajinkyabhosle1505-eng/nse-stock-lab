@@ -54,3 +54,74 @@ export function findVerdict(
   const v = file.verdicts.find((x) => x.ticker.toUpperCase() === t);
   return v ? enrichPlanFields(v) : undefined;
 }
+
+type Obj = Record<string, unknown>;
+
+/**
+ * Adapter: the desk fixture `daily_report.json` stores `sections` as an ARRAY of
+ * `{id,title,body,tickers}` (ids overview, top_under_1000, deep_dive, avoids,
+ * paper, summary) while the /report page reads KEYED sections
+ * ("1_market_overview" … "6_final_summary"). The mismatch rendered "No items"
+ * everywhere. Keyed input passes through unchanged. Values come only from the
+ * fixture + the same-run verdicts file — nothing is invented.
+ */
+export function normalizeDailyReport(raw: Obj, verdicts?: VerdictsFile | null): Obj {
+  const sections = raw.sections;
+  if (!Array.isArray(sections)) return raw;
+  const byId = new Map<string, Obj>();
+  for (const s of sections as Obj[]) byId.set(String(s.id), s);
+  const vIndex = new Map<string, Verdict>();
+  for (const v of verdicts?.verdicts || []) vIndex.set(v.ticker.toUpperCase(), v);
+  const tickers = (s?: Obj) => (Array.isArray(s?.tickers) ? (s!.tickers as unknown[]).map(String) : []);
+  const lines = (s?: Obj) =>
+    String(s?.body || "")
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+  const pick = (t: string): Obj => {
+    const v = vIndex.get(t.toUpperCase());
+    return {
+      ticker: t,
+      action: v?.action ?? null,
+      confidence_1_10: v?.confidence_1_10 ?? null,
+      entry: v?.entry ?? null,
+      sl: v?.sl ?? null,
+      targets: v?.targets ?? [],
+      size_inr: v?.size_inr ?? null,
+    };
+  };
+  const overview = byId.get("overview");
+  const top = byId.get("top_under_1000");
+  const deep = byId.get("deep_dive");
+  const avoids = byId.get("avoids");
+  const paper = byId.get("paper");
+  const summary = byId.get("summary");
+  return {
+    ...raw,
+    sections_shape: "array_adapted",
+    sections: {
+      "1_market_overview": { indices_note: overview?.body ?? null },
+      "2_top10_under_1000": { items: tickers(top).map(pick) },
+      "3_deep_dive_top3": {
+        items: tickers(deep).map((t) => {
+          const v = vIndex.get(t.toUpperCase());
+          const line = lines(deep).find((l) => l.toUpperCase().startsWith(`${t.toUpperCase()} `));
+          return { ticker: t, verdict: { ...pick(t), reasons: v?.reasons?.length ? v.reasons : line ? [line] : [] } };
+        }),
+      },
+      "4_five_avoids": {
+        items: lines(avoids).map((l) => {
+          const i = l.indexOf(":");
+          return i > 0
+            ? { ticker: l.slice(0, i).trim(), kind: "avoid", note: l.slice(i + 1).trim() }
+            : { ticker: "—", kind: "avoid", note: l };
+        }),
+      },
+      "5_penny_under_50": { items: [], note: "Not covered by this desk fixture." },
+      "6_final_summary": {
+        headline: summary?.body ?? null,
+        paper_fills: paper ? lines(paper).join(" · ") : null,
+      },
+    },
+  };
+}
