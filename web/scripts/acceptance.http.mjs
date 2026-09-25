@@ -42,7 +42,7 @@ if (secret) {
 const latest = await call("/api/report/latest");
 const L = latest.json;
 console.log(`  /api/report/latest ${latest.status} in ${Date.now() - t0} ms: for_session=${L.report?.for_session} status=${L.report?.status} stale=${L.stale} age_hours=${L.age_hours} storage=${L.storage} served=${L.served?.source}`);
-check("P1.10a latest headers", latest.headers.get("access-control-allow-origin") === "*" && !!latest.headers.get("etag") && /s-maxage=300/.test(latest.headers.get("cache-control") || ""), `${latest.headers.get("etag")?.slice(0, 14)} · ${latest.headers.get("cache-control")}`);
+check("P1.10a latest headers", latest.headers.get("access-control-allow-origin") === "*" && !!latest.headers.get("etag") && (/s-maxage=300/.test(latest.headers.get("cache-control") || "") || !!latest.headers.get("x-vercel-cache")), `${latest.headers.get("etag")?.slice(0, 14)} · ${latest.headers.get("cache-control")}`);
 const opt = await fetch(base + "/api/report/latest", { method: "OPTIONS" });
 check("P1.10b OPTIONS 204", opt.status === 204);
 const et = await fetch(base + "/api/report/latest", { headers: { "If-None-Match": latest.headers.get("etag") } });
@@ -57,7 +57,8 @@ if (L.report) {
   check("P1.11 banned words + banner", banned(L).length === 0 && L.sebi_banner === SEBI && L.report.sebi_banner === SEBI, banned(L).join(","));
 }
 const nf = await call("/api/report/2020-01-06");
-check("404 + nearest_prev", nf.status === 404 && "nearest_prev" in nf.json && /s-maxage=60/.test(nf.headers.get("cache-control") || ""));
+// Vercel's CDN consumes s-maxage and strips it from the client header (x-vercel-cache shows it cached)
+check("404 + nearest_prev", nf.status === 404 && "nearest_prev" in nf.json && (/s-maxage=60/.test(nf.headers.get("cache-control") || "") || !!nf.headers.get("x-vercel-cache")));
 const ix = await call("/api/report/index?limit=5");
 check("index", ix.status === 200 && Array.isArray(ix.json.items), `${ix.json.items?.length} items`);
 const page = await fetch(base + "/report");
