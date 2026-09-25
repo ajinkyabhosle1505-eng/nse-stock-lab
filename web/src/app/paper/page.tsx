@@ -10,6 +10,30 @@ import {
 } from "@/lib/paperStore";
 import { SEBI_BANNER } from "@/lib/universe";
 import type { PaperForecastPosition } from "@/lib/types";
+import { PENDING_RECOVERY_KEY, ensureDevice, getMe, migrateLocal, type MeResponse } from "@/lib/paperClient";
+
+type ServerInfo = {
+  provenance: string;
+  verified: boolean;
+  badge: string | null;
+  fill_basis: string;
+  fill_session_date: string;
+  input_hash: string | null;
+  events: { type: string; session_date: string; price: number | null }[];
+  closed: { session_date: string; price: number | null } | null;
+  last_mark: { session_date: string; close: number; state: string } | null;
+  pnl: { value: number; basis: string; as_of: string } | null;
+};
+type ViewPos = PaperForecastPosition & { server?: ServerInfo };
+type ScoreBlock = {
+  n_scored: number;
+  mape_pct: number | null;
+  hit_within_1atr_pct: number | null;
+  directional_pct: number | null;
+  n_pending: number;
+  n_sparse: number;
+  n_split_excluded: number;
+};
 
 type FixtureLedger = {
   job_id?: string;
@@ -45,19 +69,80 @@ type FixtureLedger = {
 function PaperPageInner() {
   const searchParams = useSearchParams();
   const highlight = searchParams.get("highlight");
-  const [positions, setPositions] = useState<PaperForecastPosition[]>([]);
+  const [positions, setPositions] = useState<ViewPos[]>([]);
+  const [me, setMe] = useState<MeResponse | null>(null);
+  const [serverScores, setServerScores] = useState<{ verified: ScoreBlock; unverified_pre_sync: ScoreBlock } | null>(null);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const [restoreCode, setRestoreCode] = useState("");
+  const [idNote, setIdNote] = useState<string | null>(null);
   const [marking, setMarking] = useState(false);
   const [markNote, setMarkNote] = useState<string | null>(null);
   const [showFixture, setShowFixture] = useState(false);
   const [fixture, setFixture] = useState<FixtureLedger | null>(null);
 
-  const reload = useCallback(() => {
-    setPositions(readPaperForecasts());
+  const serverMode = !!me?.server_paper;
+
+  const loadServer = useCallback(async (withMark: boolean) => {
+    const r = await fetch(`/api/paper/portfolio${withMark ? "?mark=1" : ""}`, { cache: "no-store" });
+    if (!r.ok) return false;
+    const j = (await r.json()) as { positions?: ViewPos[]; scores?: { verified: ScoreBlock; unverified_pre_sync: ScoreBlock } };
+    setPositions(j.positions || []);
+    setServerScores(j.scores || null);
+    return true;
   }, []);
 
+  const reload = useCallback(async () => {
+    const m = await getMe();
+    setMe(m);
+    if (!m.server_paper) {
+      setPositions(readPaperForecasts());
+      return;
+    }
+    await ensureDevice();
+    try {
+      setPendingCode(localStorage.getItem(PENDING_RECOVERY_KEY));
+    } catch {
+      /* ignore */
+    }
+    const mig = await migrateLocal();
+    if (mig.created) setMarkNote(`Uploaded ${mig.created} browser trade(s) as "Pre-sync · unverified".`);
+    const ok = await loadServer(true);
+    if (!ok) setPositions(readPaperForecasts());
+  }, [loadServer]);
+
   useEffect(() => {
-    reload();
+    void reload();
   }, [reload]);
+
+  async function closePosition(id: string) {
+    const r = await fetch(`/api/paper/positions/${encodeURIComponent(id)}/close`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}", cache: "no-store" });
+    const j = (await r.json().catch(() => ({}))) as { error?: string };
+    if (!r.ok) setMarkNote(j.error || `HTTP ${r.status}`);
+    await loadServer(false);
+  }
+
+  async function restore() {
+    setIdNote(null);
+    const r = await fetch("/api/identity/recover", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: restoreCode }), cache: "no-store" });
+    const j = (await r.json().catch(() => ({}))) as { error?: string };
+    if (!r.ok) {
+      setIdNote(j.error === "rate_limited" ? "Too many attempts — try again in an hour." : j.error || `HTTP ${r.status}`);
+      return;
+    }
+    setRestoreCode("");
+    setIdNote("Restored. This browser now shows that paper book.");
+    await loadServer(true);
+  }
+
+  async function rotate() {
+    const r = await fetch("/api/identity/rotate-recovery", { method: "POST", cache: "no-store" });
+    const j = (await r.json().catch(() => ({}))) as { recovery_code?: string; error?: string };
+    if (j.recovery_code) {
+      localStorage.setItem(PENDING_RECOVERY_KEY, j.recovery_code);
+      setPendingCode(j.recovery_code);
+      setIdNote("New code issued — the old one no longer works.");
+    } else setIdNote(j.error || `HTTP ${r.status}`);
+  }
 
   useEffect(() => {
     if (!showFixture || fixture) return;
@@ -103,6 +188,12 @@ function PaperPageInner() {
   async function scoreDue() {
     setMarking(true);
     setMarkNote(null);
+    if (serverMode) {
+      await loadServer(true);
+      setMarkNote("Checked due days against FINAL closes (server). Provisional marks never score.");
+      setMarking(false);
+      return;
+    }
     try {
       const res = await fetch("/api/paper/mark-forecasts", {
         method: "POST",
@@ -138,13 +229,47 @@ function PaperPageInner() {
           Paper forecasts
         </h1>
         <p className="mt-1 text-sm text-slate-400">
-          Paper scenario path (ATR) scoreboard — research / learning only. Not a tip,
-          strategy proof, or recommendation.
+          Paper scenario path (ATR) scoreboard — research / learning only. Paper
+          trades, not real orders; past scores do not predict future results.
         </p>
         <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
           {SEBI_BANNER}
         </p>
+        <p className={`mt-2 rounded-lg border px-2.5 py-1.5 text-[11px] ${serverMode ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200" : "border-slate-700 bg-slate-900/60 text-slate-400"}`}>
+          {me == null
+            ? "Checking storage…"
+            : serverMode
+              ? "Synced: entries are set by the server from a fresh quote and frozen (write-once). Scores use FINAL closes only."
+              : "Browser-only mode: trades live in this browser (no database configured on this deployment). Unverified."}
+        </p>
       </header>
+
+      {serverMode ? (
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 space-y-2 text-xs text-slate-300">
+          <h2 className="font-semibold uppercase tracking-wider text-slate-500">Recovery code</h2>
+          {pendingCode ? (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 space-y-2">
+              <p className="text-amber-100">Save this code — it is the only way to open this paper book on another device. Shown until you confirm.</p>
+              <p className="font-mono text-lg tracking-widest text-white">{pendingCode}</p>
+              <button type="button" className="rounded-lg border border-amber-400/50 px-2.5 py-1 font-semibold text-amber-100" onClick={() => { localStorage.removeItem(PENDING_RECOVERY_KEY); setPendingCode(null); }}>
+                I saved it
+              </button>
+            </div>
+          ) : me?.recovery_available ? (
+            <p className="text-slate-400">{me?.device?.recovery_code_issued ? "A recovery code exists for this book." : "No recovery code yet."}</p>
+          ) : (
+            <p className="text-slate-500">Recovery codes are not enabled on this deployment yet.</p>
+          )}
+          {me?.recovery_available ? (
+            <div className="flex flex-wrap gap-2">
+              <input value={restoreCode} onChange={(e) => setRestoreCode(e.target.value)} placeholder="XXXX-XXXX-XXXX" className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 font-mono text-white outline-none" />
+              <button type="button" onClick={() => void restore()} className="rounded-lg border border-sky-500/40 px-2.5 py-1 font-semibold text-sky-200">Restore</button>
+              <button type="button" onClick={() => void rotate()} className="rounded-lg border border-slate-600 px-2.5 py-1 text-slate-300">New code</button>
+            </div>
+          ) : null}
+          {idNote ? <p className="text-slate-400">{idNote}</p> : null}
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
@@ -160,7 +285,21 @@ function PaperPageInner() {
             {marking ? "Marking…" : "Score due"}
           </button>
         </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        {serverMode && serverScores ? (
+          <div className="space-y-2 text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <Stat label="Verified scored (n)" value={String(serverScores.verified.n_scored)} />
+              <Stat label="MAPE % (verified)" value={serverScores.verified.mape_pct != null ? String(serverScores.verified.mape_pct) : "—"} />
+              <Stat label="Within ~1 ATR %" value={serverScores.verified.hit_within_1atr_pct != null ? String(serverScores.verified.hit_within_1atr_pct) : "—"} />
+              <Stat label="Sample" value={serverScores.verified.n_scored >= 20 ? "n≥20 — inspect bands only" : "insufficient (need n≥20)"} warn={serverScores.verified.n_scored < 20} />
+            </div>
+            <p className="text-[11px] text-slate-500">
+              Pending {serverScores.verified.n_pending} · sparse {serverScores.verified.n_sparse} · possible-split excluded {serverScores.verified.n_split_excluded}. Pre-sync (unverified) trades scored separately: n={serverScores.unverified_pre_sync.n_scored}
+              {serverScores.unverified_pre_sync.mape_pct != null ? `, MAPE ${serverScores.unverified_pre_sync.mape_pct}%` : ""} — not in headline numbers.
+            </p>
+          </div>
+        ) : null}
+        <div className={`grid grid-cols-2 gap-2 text-sm ${serverMode ? "hidden" : ""}`}>
           <Stat label="Fills with path" value={String(scoreboard.n_fills)} />
           <Stat label="Scored points (n)" value={String(scoreboard.n_scored)} />
           <Stat
@@ -177,7 +316,7 @@ function PaperPageInner() {
             warn={!scoreboard.claimReady}
           />
         </div>
-        <div className="space-y-1 text-xs text-slate-400">
+        <div className={`space-y-1 text-xs text-slate-400 ${serverMode ? "hidden" : ""}`}>
           {(["le7", "8to21", "ge22"] as const).map((b) => {
             const h = scoreboard.byHorizon[b];
             const mape =
@@ -234,17 +373,38 @@ function PaperPageInner() {
                     {formatTime(p.boughtAt)}
                     {p.sector ? ` · ${p.sector}` : ""}
                   </p>
+                  {p.server ? (
+                    <p className="mt-1 flex flex-wrap gap-1 text-[10px]">
+                      {p.server.badge ? (
+                        <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-amber-200">{p.server.badge}</span>
+                      ) : (
+                        <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-emerald-200">Server-frozen</span>
+                      )}
+                      <span className="rounded border border-slate-700 px-1.5 py-0.5 text-slate-400">
+                        {p.server.fill_basis === "ltp_intraday" ? "Filled at live (delayed) price" : p.server.fill_basis === "last_close" ? `Filled at close of ${p.server.fill_session_date}` : `Browser fill ${p.server.fill_session_date}`}
+                      </span>
+                      {p.server.closed ? <span className="rounded border border-slate-600 px-1.5 py-0.5 text-slate-300">Closed {p.server.closed.session_date}</span> : null}
+                    </p>
+                  ) : null}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    removePaperForecast(p.id);
-                    reload();
-                  }}
-                  className="text-[10px] text-slate-500 hover:text-rose-300"
-                >
-                  Remove
-                </button>
+                {p.server ? (
+                  !p.server.closed ? (
+                    <button type="button" onClick={() => void closePosition(p.id)} className="text-[10px] text-slate-500 hover:text-rose-300">
+                      Close
+                    </button>
+                  ) : null
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      removePaperForecast(p.id);
+                      void reload();
+                    }}
+                    className="text-[10px] text-slate-500 hover:text-rose-300"
+                  >
+                    Remove
+                  </button>
+                )}
               </div>
               <dl className="grid grid-cols-2 gap-2 text-sm">
                 <Item label="Entry" value={inr(p.entry)} />
@@ -258,6 +418,16 @@ function PaperPageInner() {
                   }
                 />
                 <Item label="Size" value={inr(p.size_inr)} />
+                {p.server ? (
+                  <Item
+                    label={p.server.pnl ? `P&L (${p.server.pnl.basis === "close_event" ? "closed" : p.server.pnl.basis === "final_mark" ? "final" : "provisional"} · ${p.server.pnl.as_of})` : "P&L"}
+                    value={p.server.pnl ? inr(p.server.pnl.value) : "UNKNOWN"}
+                    warn={p.server.pnl?.basis === "provisional_mark"}
+                  />
+                ) : null}
+                {p.server?.events.filter((e) => e.type !== "close").length ? (
+                  <Item label="Level touches (final bars)" value={p.server.events.filter((e) => e.type !== "close").map((e) => `${e.type.replace("touch_", "").toUpperCase()} ${e.session_date}`).join(" · ")} />
+                ) : null}
               </dl>
 
               {p.forecast?.status === "skipped" ? (

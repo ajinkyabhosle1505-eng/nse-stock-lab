@@ -327,3 +327,38 @@ export function unknownNews(ticker: string, note: string): NewsLane {
     ts: new Date().toISOString(),
   };
 }
+
+/**
+ * Market-level headlines for the daily report (Google News RSS, India/NSE query).
+ * Returns [] on failure — never invents items. Headlines are labeled with
+ * confirmation_status (named wire vs rumored/unverified outlet).
+ */
+export async function fetchMarketHeadlines(limit = 5): Promise<{
+  items: NewsItem[];
+  sources: string[];
+  note: string;
+}> {
+  const gUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
+    "Nifty Sensex stock market India when:1d"
+  )}&hl=en-IN&gl=IN&ceid=IN:en`;
+  const xml = await fetchRss(gUrl);
+  if (!xml) {
+    return { items: [], sources: [], note: "Market headlines UNKNOWN — RSS fetch failed" };
+  }
+  const seen = new Set<string>();
+  const items: NewsItem[] = [];
+  for (const raw of parseRssItems(xml)) {
+    const key = raw.title.slice(0, 80).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(toNewsItem(raw));
+    if (items.length >= limit) break;
+  }
+  return {
+    items,
+    sources: [gUrl],
+    note: items.length
+      ? `Google News RSS (${items.length} item(s)); outlet-labeled, not verified by desk`
+      : "No market headlines returned by RSS",
+  };
+}

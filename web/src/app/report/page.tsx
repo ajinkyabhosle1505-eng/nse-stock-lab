@@ -1,7 +1,12 @@
 import { getDailyReport, getVerdicts, normalizeDailyReport } from "@/lib/data";
 import { inr } from "@/lib/format";
+import LiveReport from "@/components/LiveReport";
 
-export default async function ReportPage() {
+export default function ReportPage() {
+  return <LiveReport fallback={<FixtureReport />} />;
+}
+
+async function FixtureReport() {
   const [rawReport, verdicts] = await Promise.all([
     getDailyReport(),
     getVerdicts().catch(() => null),
@@ -23,7 +28,7 @@ export default async function ReportPage() {
   return (
     <div className="space-y-5">
       <header>
-        <h1 className="text-2xl font-bold tracking-tight text-white">Daily report</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-white">Desk fixture report (FIXTURE)</h1>
         <p className="mt-1 text-sm text-slate-400">
           {(report.report_id as string) || "report"} · as of {String(report.as_of || "—")}
         </p>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildForecastBundle } from "@/lib/forecast";
-import { serverUpsert } from "@/lib/paperServerStore";
+import { redisConfigured } from "@/lib/redis";
 import { SEBI_BANNER } from "@/lib/universe";
 import { normalizeNseSymbol } from "@/lib/yahoo";
 import type { PaperForecastPosition } from "@/lib/types";
@@ -12,9 +12,15 @@ export const maxDuration = 30;
 /**
  * POST paper buy — compute atr_piecewise_T1_T2_v1 forecast once.
  * Body: { ticker, entry, sl?, targets?, qty, budget_inr, checkDays, atr_14?, structure?, breakout_state?, sector? }
- * Persists in-memory (Vercel ephemeral). Client should also write localStorage.
+ * No-DB fallback only (stateless). With Upstash configured this returns 410.
  */
 export async function POST(req: NextRequest) {
+  if (redisConfigured()) {
+    return NextResponse.json(
+      { error: "gone", use: "POST /api/paper/positions (server-frozen entry + idempotency_key)", sebi_banner: SEBI_BANNER },
+      { status: 410 }
+    );
+  }
   let body: Record<string, unknown> = {};
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -91,12 +97,10 @@ export async function POST(req: NextRequest) {
     forecast,
   };
 
-  serverUpsert(pos);
-
   return NextResponse.json({
     ok: true,
     sebi_banner: SEBI_BANNER,
-    note: "Paper scenario path (ATR) stored in-memory (ephemeral). Also persist client-side localStorage.",
+    note: "No database configured — computed statelessly; the browser (localStorage) is the store.",
     position: pos,
   });
 }

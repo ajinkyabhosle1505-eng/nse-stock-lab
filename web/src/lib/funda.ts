@@ -70,9 +70,17 @@ interface ScreenerStats {
 }
 
 async function fetchScreenerStats(ticker: string): Promise<ScreenerStats | null> {
+  const cons = await fetchScreenerPage(ticker, true);
+  // Some companies (e.g. IRFC) have no consolidated statements → blank ratios; try standalone.
+  if (cons && (cons.pe != null || cons.roe != null)) return cons;
+  const standalone = await fetchScreenerPage(ticker, false);
+  return standalone && (standalone.pe != null || standalone.roe != null) ? standalone : cons || standalone;
+}
+
+async function fetchScreenerPage(ticker: string, consolidated: boolean): Promise<ScreenerStats | null> {
   const url = `https://www.screener.in/company/${encodeURIComponent(
     ticker
-  )}/consolidated/`;
+  )}/${consolidated ? "consolidated/" : ""}`;
   try {
     const res = await fetch(url, {
       headers: {
@@ -166,6 +174,8 @@ export function computeFundaQuality(fields: Record<string, unknown>): {
 export interface FundaOpts {
   /** Try Screener HTML when Yahoo gaps remain (default true). */
   screener?: boolean;
+  /** Try Yahoo quoteSummary (crumb/cookie) first (default true). Cron jobs pass false (brief §2.9). */
+  yahoo?: boolean;
 }
 
 export async function fetchLiveFunda(
@@ -179,7 +189,7 @@ export async function fetchLiveFunda(
   const sources: string[] = [];
   const notes: string[] = [];
 
-  const y = await fetchYahooQuoteSummary(yahooSymbol);
+  const y = opts.yahoo === false ? null : await fetchYahooQuoteSummary(yahooSymbol);
   if (y) {
     sources.push(y.source);
     if (y.trailingPE != null) fields.pe_ttm = round(y.trailingPE, 2);
@@ -209,7 +219,7 @@ export async function fetchLiveFunda(
     else if (y.industry) fields.sector = y.industry;
     notes.push("Yahoo quoteSummary");
   } else {
-    notes.push("Yahoo quoteSummary unavailable");
+    notes.push(opts.yahoo === false ? "Yahoo quoteSummary skipped (cron)" : "Yahoo quoteSummary unavailable");
   }
 
   const needScreener =

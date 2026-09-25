@@ -111,7 +111,7 @@ export async function runLookup(
   };
 }
 
-async function mapPool<T, R>(
+export async function mapPool<T, R>(
   items: T[],
   concurrency: number,
   fn: (item: T) => Promise<R>
@@ -149,7 +149,7 @@ export interface BudgetPicksResult {
  * Soft-demote mega-PSU repeats so PNB/COALINDIA cannot own every top list.
  * Documented: −18 score for MEGA_PSU_DEMOTE names (still eligible).
  */
-function diversifiedPickScore(v: Verdict): number {
+export function diversifiedPickScore(v: Verdict): number {
   let s = pickScore(v);
   if (isMegaPsuDemote(v.ticker)) s -= 18;
   return s;
@@ -159,7 +159,7 @@ function diversifiedPickScore(v: Verdict): number {
  * Sector-first round-robin by score with max picks/sector.
  * budget ≤ TIGHT_SECTOR_BUDGET_INR → max 1/sector; else max 2.
  */
-function diversifyPicks(
+export function diversifyPicks(
   buys: Verdict[],
   budget_inr: number,
   limit = 10

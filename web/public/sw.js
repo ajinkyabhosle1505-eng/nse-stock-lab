@@ -1,5 +1,5 @@
 /* NSE Stock Lab — basic offline cache for static assets + /data/*.json */
-const CACHE = "stock-lab-v1";
+const CACHE = "stock-lab-v2";
 const PRECACHE = [
   "/",
   "/ideas",
@@ -44,7 +44,8 @@ self.addEventListener("fetch", (event) => {
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.match(/\.(js|css|png|svg|webmanifest|ico|woff2?)$/);
 
-  if (isData || isStatic || PRECACHE.includes(url.pathname)) {
+  const isReportApi = url.pathname === "/api/report/latest"; // network-first, offline fallback
+  if (isData || isStatic || isReportApi || PRECACHE.includes(url.pathname)) {
     event.respondWith(
       caches.open(CACHE).then(async (cache) => {
         try {

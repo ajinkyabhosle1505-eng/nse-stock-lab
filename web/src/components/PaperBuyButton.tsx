@@ -7,6 +7,7 @@ import {
   DEFAULT_CHECK_DAY_CHIPS,
 } from "@/lib/forecast";
 import { upsertPaperForecast } from "@/lib/paperStore";
+import { ensureDevice, getMe, newIdempotencyKey } from "@/lib/paperClient";
 import { SEBI_BANNER } from "@/lib/universe";
 import { inr } from "@/lib/format";
 import type { PaperForecastPosition } from "@/lib/types";
@@ -39,6 +40,8 @@ export default function PaperBuyButton({
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [idemKey, setIdemKey] = useState<string>("");
+  const [moved, setMoved] = useState<{ server_price: number; moved_pct: number; tolerance_pct: number } | null>(null);
 
   const canBuy =
     String(input.action || "buy").toLowerCase() === "buy" &&
@@ -74,6 +77,54 @@ export default function PaperBuyButton({
     setCustom("");
   }
 
+  function openDialog() {
+    setIdemKey(newIdempotencyKey());
+    setMoved(null);
+    setErr(null);
+    setOpen(true);
+  }
+
+  /** Server mode: entry is set by the server from a fresh quote. Returns false → use browser fallback. */
+  async function confirmServer(clientEntry: number): Promise<boolean> {
+    const me = await getMe();
+    if (!me.server_paper) return false;
+    const dev = await ensureDevice();
+    if (!dev.ok) return false;
+    const res = await fetch("/api/paper/positions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        idempotency_key: idemKey || newIdempotencyKey(),
+        ticker: input.ticker,
+        qty: Math.max(1, Math.floor(input.qty || 1)),
+        budget_inr: input.budget_inr,
+        client_entry: clientEntry,
+        checkDays: days,
+      }),
+      cache: "no-store",
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      server_price?: number;
+      moved_pct?: number;
+      tolerance_pct?: number;
+      note?: string;
+      position?: { id: string };
+    };
+    if (res.status === 503 && json.error === "db_not_configured") return false;
+    if (res.status === 409 && json.error === "quote_moved" && json.server_price) {
+      setMoved({ server_price: json.server_price, moved_pct: json.moved_pct ?? 0, tolerance_pct: json.tolerance_pct ?? 0 });
+      return true;
+    }
+    if (!res.ok || !json.position) {
+      setErr(json.note || json.error || `HTTP ${res.status}`);
+      return true;
+    }
+    setOpen(false);
+    router.push(`/paper?highlight=${encodeURIComponent(json.position.id)}`);
+    return true;
+  }
+
   async function confirm() {
     if (!days.length) {
       setErr("Pick at least one check day");
@@ -81,6 +132,15 @@ export default function PaperBuyButton({
     }
     setBusy(true);
     setErr(null);
+    try {
+      const handled = await confirmServer(moved ? moved.server_price : input.entry);
+      if (handled) {
+        setBusy(false);
+        return;
+      }
+    } catch {
+      /* fall back to browser mode */
+    }
     const qty = Math.max(1, Math.floor(input.qty || 1));
     const budget_inr = input.budget_inr || input.entry * qty;
     const boughtAt = new Date().toISOString();
@@ -118,30 +178,6 @@ export default function PaperBuyButton({
 
     upsertPaperForecast(pos);
 
-    // Optional server echo (ephemeral)
-    try {
-      await fetch("/api/paper/buy", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ticker: pos.ticker,
-          entry: pos.entry,
-          sl: pos.sl,
-          targets: pos.targets,
-          qty: pos.qty,
-          budget_inr: pos.budget_inr,
-          checkDays: days,
-          atr_14: pos.atr_14,
-          structure: pos.structure,
-          breakout_state: pos.breakout_state,
-          sector: pos.sector,
-        }),
-        cache: "no-store",
-      });
-    } catch {
-      /* localStorage is source of truth */
-    }
-
     setBusy(false);
     setOpen(false);
     router.push(`/paper?highlight=${encodeURIComponent(pos.id)}`);
@@ -153,7 +189,7 @@ export default function PaperBuyButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openDialog}
         className={
           className ||
           "w-full rounded-xl border border-sky-500/40 bg-sky-500/15 py-2.5 text-sm font-semibold text-sky-200 hover:bg-sky-500/25"
@@ -169,8 +205,9 @@ export default function PaperBuyButton({
               Paper buy · {input.ticker}
             </h3>
             <p className="text-xs text-slate-400">
-              Paper scenario path (ATR) — research / learning only. Not a tip or
-              recommendation.
+              Paper scenario path (ATR) — research / learning only. Paper trade,
+              not a real order. With sync on, the server fills at its own fresh
+              quote and freezes the path.
             </p>
             <p className="text-sm text-slate-200">
               Entry {inr(input.entry)}
@@ -246,6 +283,12 @@ export default function PaperBuyButton({
               </div>
             ) : null}
 
+            {moved ? (
+              <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                Price moved {moved.moved_pct}% (limit {moved.tolerance_pct}%). Server price now{" "}
+                {inr(moved.server_price)}. Confirm again to paper-buy at the server price.
+              </p>
+            ) : null}
             {err ? <p className="text-xs text-rose-300">{err}</p> : null}
 
             <div className="flex gap-2 pt-1">
@@ -262,7 +305,7 @@ export default function PaperBuyButton({
                 onClick={() => void confirm()}
                 className="flex-1 rounded-xl bg-emerald-500 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-60"
               >
-                {busy ? "…" : "Confirm paper buy"}
+                {busy ? "…" : moved ? "Confirm at server price" : "Confirm paper buy"}
               </button>
             </div>
             <p className="text-[10px] leading-relaxed text-slate-500">{SEBI_BANNER}</p>

@@ -19,7 +19,7 @@ export const SCREEN_UNIVERSE = [
   "HCLTECH",
   "WIPRO",
   "TECHM",
-  "LTIM",
+  "LTM", // LTIMindtree renamed "LTM Limited"; LTIM.NS delisted on Yahoo, LTM.NS verified 2026-09-25
   // Energy / Oil / Power
   "RELIANCE",
   "ONGC",
@@ -83,7 +83,7 @@ const SECTOR: Record<string, string> = {
   HCLTECH: "IT",
   WIPRO: "IT",
   TECHM: "IT",
-  LTIM: "IT",
+  LTM: "IT",
   RELIANCE: "Energy",
   ONGC: "Energy",
   NTPC: "Energy",

@@ -500,3 +500,132 @@ export async function fetchYahooHistoryRelaxed(
     source: `yahoo:query1/chart:${yahooSymbol}:${range},${interval}`,
   };
 }
+
+export type YahooFailure =
+  | "yahoo_404"
+  | "yahoo_429"
+  | "http_5xx"
+  | "http_other"
+  | "timeout"
+  | "network"
+  | "short_history"
+  | "empty";
+
+export interface DailyBarX {
+  date: string; // IST YYYY-MM-DD
+  ts: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  adjclose: number | null;
+  volume: number;
+}
+
+export interface ChartResult {
+  ok: boolean;
+  error?: YahooFailure;
+  attempts: number;
+  symbol: string;
+  bars: DailyBarX[]; // settled only (today's partial bar dropped until regular.end+30m)
+  regularMarketPrice: number | null;
+  regularEnd: number | null;
+  source: string;
+  fetched_at: string;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Yahoo v8 chart with failure reasons, jitter and retries (brief §2.3/§2.9):
+ * 100–400 ms jitter before each request; 2 retries (1 s, 3 s + 0–500 ms) on
+ * 429 / 5xx / network / timeout; no retry on 404. Never invents bars.
+ */
+export async function fetchYahooChartX(
+  yahooSymbol: string,
+  range = "1y",
+  opts: { minBars?: number; retries?: number; jitter?: boolean } = {}
+): Promise<ChartResult> {
+  const minBars = opts.minBars ?? 1;
+  const retries = opts.retries ?? 2;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+    yahooSymbol
+  )}?interval=1d&range=${encodeURIComponent(range)}`;
+  const source = `yahoo:query1/chart:${yahooSymbol}:${range},1d`;
+  let attempts = 0;
+  let lastErr: YahooFailure = "network";
+  for (let a = 0; a <= retries; a++) {
+    if (a > 0) await sleep((a === 1 ? 1000 : 3000) + Math.random() * 500);
+    else if (opts.jitter !== false) await sleep(100 + Math.random() * 300);
+    attempts++;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: { "User-Agent": UA, Accept: "application/json", "Accept-Language": "en-IN,en;q=0.9" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(12000),
+      });
+    } catch (e) {
+      lastErr = e instanceof Error && /timeout|abort/i.test(e.name + e.message) ? "timeout" : "network";
+      continue;
+    }
+    if (res.status === 404) {
+      return { ok: false, error: "yahoo_404", attempts, symbol: yahooSymbol, bars: [], regularMarketPrice: null, regularEnd: null, source, fetched_at: new Date().toISOString() };
+    }
+    if (res.status === 429) { lastErr = "yahoo_429"; continue; }
+    if (res.status >= 500) { lastErr = "http_5xx"; continue; }
+    if (!res.ok) { lastErr = "http_other"; break; }
+    const data = (await res.json().catch(() => null)) as {
+      chart?: { result?: Array<{
+        meta?: { regularMarketPrice?: number; currentTradingPeriod?: { regular?: { end?: number } } };
+        timestamp?: number[];
+        indicators?: {
+          quote?: Array<{ open?: (number | null)[]; high?: (number | null)[]; low?: (number | null)[]; close?: (number | null)[]; volume?: (number | null)[] }>;
+          adjclose?: Array<{ adjclose?: (number | null)[] }>;
+        };
+      }>; error?: { code?: string } | null };
+    } | null;
+    const result = data?.chart?.result?.[0];
+    if (!result?.timestamp?.length) {
+      lastErr = data?.chart?.error ? "yahoo_404" : "empty";
+      break;
+    }
+    const q = result.indicators?.quote?.[0] || {};
+    const adj = result.indicators?.adjclose?.[0]?.adjclose || [];
+    const bars: DailyBarX[] = [];
+    for (let i = 0; i < result.timestamp.length; i++) {
+      const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
+      if (o == null || h == null || l == null || c == null || ![o, h, l, c].every(Number.isFinite)) continue;
+      const ts = result.timestamp[i];
+      const ac = adj[i];
+      bars.push({
+        date: istDate(ts * 1000),
+        ts,
+        open: o,
+        high: h,
+        low: l,
+        close: c,
+        adjclose: ac != null && Number.isFinite(ac) ? ac : null,
+        volume: Number.isFinite(q.volume?.[i] as number) ? (q.volume?.[i] as number) : 0,
+      });
+    }
+    const regEnd = result.meta?.currentTradingPeriod?.regular?.end;
+    const regularEnd = typeof regEnd === "number" ? regEnd : null;
+    const settled = dropUnsettledTodayBar(bars, regularEnd);
+    const rmp = result.meta?.regularMarketPrice;
+    if (settled.length < minBars) {
+      return { ok: false, error: "short_history", attempts, symbol: yahooSymbol, bars: settled, regularMarketPrice: null, regularEnd, source, fetched_at: new Date().toISOString() };
+    }
+    return {
+      ok: true,
+      attempts,
+      symbol: yahooSymbol,
+      bars: settled,
+      regularMarketPrice: rmp != null && Number.isFinite(rmp) ? rmp : null,
+      regularEnd,
+      source,
+      fetched_at: new Date().toISOString(),
+    };
+  }
+  return { ok: false, error: lastErr, attempts, symbol: yahooSymbol, bars: [], regularMarketPrice: null, regularEnd: null, source, fetched_at: new Date().toISOString() };
+}
