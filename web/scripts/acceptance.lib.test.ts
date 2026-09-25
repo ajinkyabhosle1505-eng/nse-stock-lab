@@ -6,7 +6,7 @@
  * Uses live Yahoo/screener for the generation tests (never invents data).
  */
 import { expectedReportSession, isTradingDay, prevTradingDay } from "../src/lib/marketCalendar";
-import { generateReport, verifyReport, reportUniverse } from "../src/lib/report";
+import { generateReport, verifyReport, reportUniverse, verdictFor, assembleReport } from "../src/lib/report";
 import { getReport, getReportInputs, putReportOnce, listReportDates } from "../src/lib/reportStore";
 import { runPremarket, serveLatest } from "../src/lib/reportService";
 import { acquireLease, getJobRun } from "../src/lib/jobs/lock";
@@ -65,6 +65,27 @@ async function main() {
   const unknownTickers = new Set(rep.unknowns.filter((u) => u.lane === "tech").map((u) => u.ticker));
   const inSections = [...t10.map((p) => p.ticker), ...rep.sections.avoids5.items.map((a) => a.ticker), ...rep.sections.penny_under_50.items.map((p) => p.ticker)];
   check("P1.12a sections non-empty & no UNKNOWN names ranked", inSections.length > 0 && !inSections.some((t) => unknownTickers.has(t)), `top10=${t10.length} avoids=${rep.sections.avoids5.items.length} penny=${rep.sections.penny_under_50.items.length}`);
+
+  // #14 funda UNKNOWN honesty (report_v2): a Screener data gap never becomes "fail"/avoid by itself,
+  // is flagged funda_unknown, shown as UNKNOWN in the deep dive, and never estimated.
+  const gapFunda = { fields: { funda_quality: "fail", red_flags: ["Heavy unknowns on PE/ROE/D-E"] }, sources: [], note: "Screener unavailable (screener_429) — gaps left unknown" };
+  const buyRow = Object.values(gen.inputs.symbols).find((s) => s.tech && verdictFor(s)?.action === "buy");
+  let gapOk = true;
+  let gapInfo = "no buy row today (vacuous)";
+  if (buyRow) {
+    const g = { ...buyRow, funda: gapFunda };
+    const v2 = verdictFor(g)!;
+    const v1 = verdictFor(g, "report_v1|risk_v1|atr_piecewise_T1_T2_v1")!;
+    gapOk = v2.action === "buy" && v2.risk_flags.includes("funda_unknown") && !v2.risk_flags.includes("funda_quality=fail") && v1.action !== "buy";
+    gapInfo = `${buyRow.ticker}: v2=${v2.action}/conf${v2.confidence_1_10} v1=${v1.action}`;
+  }
+  const deepOk = rep.sections.deep_dive_top3.items.every((d) => !d.risk_flags.includes("funda_unknown") || d.funda.funda_quality === "UNKNOWN");
+  const noFailPicks = t10.every((p) => !p.risk_flags.includes("funda_quality=fail"));
+  check("P1.14 funda gap → UNKNOWN (not avoid), flagged, never estimated", gapOk && deepOk && noFailPicks, gapInfo);
+
+  // #8c stored v1 reports still verify under v1 rules
+  const asV1 = assembleReport(gen.inputs, null, { lanes: rep.lanes, unknowns: rep.unknowns, partial: rep.status === "partial", generated_at: rep.generated_at, elapsed_ms: rep.timing.elapsed_ms, scan_deadline_ms: rep.timing.scan_deadline_ms, method_version: "report_v1|risk_v1|atr_piecewise_T1_T2_v1" });
+  check("P1.8c v1 report re-verifies with v1 rules", verifyReport(asV1, JSON.parse(JSON.stringify(gen.inputs)), null).ok && asV1.method_version.startsWith("report_v1|"));
 
   // Store + P2.2 immutability (SET NX: second insert refused, content unchanged)
   check("store report", await putReportOnce(rep, gen.inputs));

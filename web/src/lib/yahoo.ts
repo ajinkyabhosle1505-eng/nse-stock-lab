@@ -532,6 +532,8 @@ export interface ChartResult {
   regularEnd: number | null;
   source: string;
   fetched_at: string;
+  /** IST dates of rows Yahoo returned with null/non-finite OHLC (skipped, never filled). */
+  null_row_dates?: string[];
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -544,11 +546,11 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function fetchYahooChartX(
   yahooSymbol: string,
   range = "1y",
-  opts: { minBars?: number; retries?: number; jitter?: boolean } = {}
+  opts: { minBars?: number; retries?: number; jitter?: boolean; host?: "query1" | "query2" } = {}
 ): Promise<ChartResult> {
   const minBars = opts.minBars ?? 1;
   const retries = opts.retries ?? 2;
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
+  const url = `https://${opts.host || "query1"}.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(
     yahooSymbol
   )}?interval=1d&range=${encodeURIComponent(range)}`;
   const source = `yahoo:query1/chart:${yahooSymbol}:${range},1d`;
@@ -593,9 +595,15 @@ export async function fetchYahooChartX(
     const q = result.indicators?.quote?.[0] || {};
     const adj = result.indicators?.adjclose?.[0]?.adjclose || [];
     const bars: DailyBarX[] = [];
+    const nullRows: string[] = [];
     for (let i = 0; i < result.timestamp.length; i++) {
       const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
-      if (o == null || h == null || l == null || c == null || ![o, h, l, c].every(Number.isFinite)) continue;
+      if (o == null || h == null || l == null || c == null || ![o, h, l, c].every(Number.isFinite)) {
+        // Yahoo sometimes returns a row with null OHLC (seen 2026-09-25 for the prior session's bar
+        // during market hours). Skip it — never fill — but remember the date for the UNKNOWN reason.
+        nullRows.push(istDate(result.timestamp[i] * 1000));
+        continue;
+      }
       const ts = result.timestamp[i];
       const ac = adj[i];
       bars.push({
@@ -614,7 +622,7 @@ export async function fetchYahooChartX(
     const settled = dropUnsettledTodayBar(bars, regularEnd);
     const rmp = result.meta?.regularMarketPrice;
     if (settled.length < minBars) {
-      return { ok: false, error: "short_history", attempts, symbol: yahooSymbol, bars: settled, regularMarketPrice: null, regularEnd, source, fetched_at: new Date().toISOString() };
+      return { ok: false, error: "short_history", attempts, symbol: yahooSymbol, bars: settled, regularMarketPrice: null, regularEnd, source, fetched_at: new Date().toISOString(), null_row_dates: nullRows };
     }
     return {
       ok: true,
@@ -625,6 +633,7 @@ export async function fetchYahooChartX(
       regularEnd,
       source,
       fetched_at: new Date().toISOString(),
+      ...(nullRows.length ? { null_row_dates: nullRows } : {}),
     };
   }
   return { ok: false, error: lastErr, attempts, symbol: yahooSymbol, bars: [], regularMarketPrice: null, regularEnd: null, source, fetched_at: new Date().toISOString() };

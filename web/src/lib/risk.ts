@@ -238,22 +238,46 @@ function strField(
   return typeof v === "string" ? v : null;
 }
 
+/**
+ * True when funda_quality=fail comes only from missing data (Screener blocked /
+ * not fetched: no PE, ROE or D/E at all) rather than from a real red flag.
+ */
+export function isFundaDataGap(fields: Record<string, unknown> | undefined): boolean {
+  if (!fields) return false;
+  if (strField(fields, "funda_quality") !== "fail") return false;
+  const rf = Array.isArray(fields.red_flags) ? fields.red_flags.map(String) : [];
+  if (!rf.some((x) => /Heavy unknowns|No live funda/i.test(x))) return false;
+  return !["pe_ttm", "roe_pct", "debt_equity"].some((k) => typeof fields[k] === "number");
+}
+
 function applyFundaNewsGates(
   funda: LaneStub | null | undefined,
   news: LaneStub | null | undefined,
   favorBuy: boolean,
   exceptionalTape: boolean,
   reasons: string[],
-  risk_flags: string[]
-): { favorBuy: boolean; forceAvoid: boolean; holdLean: boolean } {
+  risk_flags: string[],
+  fundaGap: "avoid" | "unknown" = "avoid"
+): { favorBuy: boolean; forceAvoid: boolean; holdLean: boolean; fundaUnknown: boolean } {
   let buy = favorBuy;
   let forceAvoid = false;
   let holdLean = false;
+  let fundaUnknown = false;
 
   const ff = funda?.fields;
   const quality = strField(ff, "funda_quality");
 
-  if (quality === "fail") {
+  if (fundaGap === "unknown" && (funda == null || isFundaDataGap(ff))) {
+    // A data failure is not a thesis: PE/ROE/D-E are UNKNOWN (shown as such),
+    // the tape decides, and confidence is capped one notch below a verified name.
+    fundaUnknown = true;
+    risk_flags.push("funda_unknown");
+    reasons.push(
+      funda == null
+        ? "Funda: not fetched — UNKNOWN; confidence capped"
+        : "Funda: UNKNOWN (PE/ROE/D-E unavailable) — not verified; confidence capped"
+    );
+  } else if (quality === "fail") {
     risk_flags.push("funda_quality=fail");
     if (exceptionalTape) {
       holdLean = true;
@@ -286,7 +310,7 @@ function applyFundaNewsGates(
     risk_flags.push("funda_thin");
   }
 
-  const red = ff?.red_flags;
+  const red = fundaUnknown ? null : ff?.red_flags;
   if (Array.isArray(red)) {
     for (const r of red.slice(0, 3)) {
       if (typeof r === "string") risk_flags.push(r);
@@ -327,7 +351,7 @@ function applyFundaNewsGates(
     reasons.push(`News why: ${why}`);
   }
 
-  return { favorBuy: buy, forceAvoid, holdLean };
+  return { favorBuy: buy, forceAvoid, holdLean, fundaUnknown };
 }
 
 function buildBuyTrigger(tech: TechLane, entry: number): number | string {
@@ -353,6 +377,12 @@ export interface MergeOpts {
   risk_pct?: number;
   funda?: LaneStub | null;
   news?: LaneStub | null;
+  /**
+   * How to treat funda that is missing (Screener blocked / not fetched).
+   * "avoid" (legacy default): funda_quality=fail → avoid unless tape exceptional.
+   * "unknown" (report_v2): funda shown as UNKNOWN, tape decides, confidence −1.
+   */
+  fundaGap?: "avoid" | "unknown";
 }
 
 /**
@@ -411,7 +441,8 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
     bias.favorBuy,
     bias.exceptionalTape,
     reasons,
-    risk_flags
+    risk_flags,
+    opts.fundaGap
   );
 
   const sized = sizePosition({ budget_inr, risk_pct, entry, sl });
@@ -433,7 +464,7 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
     if (strField(opts.funda?.fields, "funda_quality") === "pass") {
       confidence += 1;
     }
-    if (strField(opts.funda?.fields, "funda_quality") === "watch") {
+    if (strField(opts.funda?.fields, "funda_quality") === "watch" || gated.fundaUnknown) {
       confidence -= 1;
     }
     // P0b: sector preference neutralized — no score/reason boost

@@ -51,3 +51,30 @@ UPSTASH_REDIS_REST_URL=http://127.0.0.1:8079 UPSTASH_REDIS_REST_TOKEN=dev npx ts
 node scripts/acceptance.http.mjs http://localhost:3101 --db --secret=testsecret   # server started with the mock env
 node scripts/acceptance.http.mjs https://nse-stock-lab.vercel.app                 # production (read-only checks)
 ```
+
+## Diagnosing a thin report (UNKNOWNs / short Top 10)
+```
+cd web
+npx tsx --tsconfig tsconfig.json scripts/report-diagnose.ts 2026-09-25 /tmp/rep.json   # live build, no Redis writes
+npx tsx --tsconfig tsconfig.json scripts/report-diagnose.ts --inputs saved-inputs.json  # offline, pure rebuild
+```
+Prints UNKNOWN counts by lane/reason and, per symbol, why it is or isn't in the Top 10
+(action + gate, price band, or sector cap).
+
+Findings 2026-09-25 (report_v1: 6 in Top 10, 29 UNKNOWN):
+- **Screener 429** (21 names): screener.in's nginx limit lets ~20 quick requests through, then
+  answers 429 "Too many requests" (no Retry-After). Fixed in `funda.ts`: process-wide token bucket
+  (burst 8, then 1 req / 1.15 s), 429 → bucket emptied + 6 s/12 s cool-down + retry (3 tries), no
+  standalone-page retry after a 429. UNKNOWN reasons are now specific (`screener_429`, `screener_timeout`,
+  `screener_blank_ratios`, …). Funda pass now takes ~55–60 s instead of ~21 s.
+- **Funda gap forced "avoid"** (report_v1): Screener-blocked names got `funda_quality=fail`
+  ("Heavy unknowns") and were turned into avoids. report_v2 (`fundaGap:"unknown"` in `mergeVerdict`)
+  shows funda as UNKNOWN (flag `funda_unknown`), lets the tape decide, and caps confidence −1. Stored v1
+  reports still re-verify with v1 rules (`fundaGapPolicy(method_version)`). /lookup and /budget-picks
+  still use the legacy rule (default `fundaGap:"avoid"`).
+- **Yahoo null bar** (8 names): Yahoo v8 returned the 2026-09-24 row with null OHLC for BAJAJ-AUTO,
+  BAJAJFINSV, GAIL, GRASIM, IOB, JSWSTEEL, SBILIFE, ULTRACEMCO (query1 and query2, range 5d/1mo/1y, BSE too)
+  while the 25-Sep session was live. That report was self-generated at 12:36 IST, not by the 06:30 cron.
+  These stay UNKNOWN (`yahoo_null_bar`), never filled from the 23-Sep bar or intraday bars. The builder
+  now tries query2 once when the based_on_close row is missing. NSE bhavcopy (official) returns 403 from
+  cloud/box IPs, so it can't be used as a fallback.

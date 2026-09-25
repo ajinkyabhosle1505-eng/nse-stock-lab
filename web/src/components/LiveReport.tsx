@@ -157,7 +157,7 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
               left={`${p.rank}. ${p.ticker}`}
               mid={`${p.sector || "—"} · conf ${p.confidence_1_10}/10`}
               right={`Close ${inr(p.cmp)}`}
-              sub={`SL ${inr(p.sl)} · ATR level T1 ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)} — ${p.plain_why}`}
+              sub={`SL ${inr(p.sl)} · ATR level T1 ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)} — ${p.plain_why}${p.risk_flags?.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}`}
             />
           ))}
           {!s.top10_under_1000.items.length ? <Empty note={s.top10_under_1000.note} /> : null}

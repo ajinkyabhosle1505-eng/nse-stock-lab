@@ -37,7 +37,16 @@ import { canonicalJSON, sha256hex } from "./hash";
 import type { TechFields, TechLane, Verdict } from "./types";
 import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
 
-export const METHOD_VERSION = "report_v1|risk_v1|atr_piecewise_T1_T2_v1";
+/**
+ * report_v2|risk_v2 (2026-09-25): funda that is missing (Screener blocked / not
+ * fetched) no longer forces "avoid" — it is shown as UNKNOWN, the tape decides
+ * and confidence is capped −1 (risk.ts fundaGap:"unknown"). Stored v1 reports
+ * are still re-verified with the v1 rules (see fundaGapPolicy).
+ */
+export const METHOD_VERSION = "report_v2|risk_v2|atr_piecewise_T1_T2_v1";
+export function fundaGapPolicy(method: string = METHOD_VERSION): "avoid" | "unknown" {
+  return method.startsWith("report_v1|") ? "avoid" : "unknown";
+}
 const BUDGET_INR = 10000;
 const RISK_PCT = 1;
 const MAX_PER_SECTOR = 2;
@@ -114,13 +123,14 @@ function stub(x: SymbolInput["funda"], ticker: string): LaneStub | null {
   return x ? { ticker, fields: x.fields, unknowns: [], sources: x.sources, note: x.note } : null;
 }
 
-export function verdictFor(s: SymbolInput): Verdict | null {
+export function verdictFor(s: SymbolInput, method: string = METHOD_VERSION): Verdict | null {
   if (!s.tech) return null;
   const v = mergeVerdict(techLane(s), {
     budget_inr: BUDGET_INR,
     risk_pct: RISK_PCT,
     funda: stub(s.funda, s.ticker),
     news: stub(s.news, s.ticker),
+    fundaGap: fundaGapPolicy(method),
   });
   return { ...v, sector: s.sector };
 }
@@ -144,14 +154,15 @@ function isDataGapFunda(f: SymbolInput["funda"]): boolean {
 // ---------------------------------------------------------------- sections (pure)
 export function buildSections(
   inp: ReportInputs,
-  prev: ReportV1 | null
+  prev: ReportV1 | null,
+  method: string = METHOD_VERSION
 ): { sections: ReportV1["sections"]; unknownsFromData: { ticker: string; lane: Lane; reason: string }[] } {
   const unknownsFromData: { ticker: string; lane: Lane; reason: string }[] = [];
   const rows: { s: SymbolInput; v: Verdict }[] = [];
   for (const t of inp.universe) {
     const s = inp.symbols[t];
     if (!s?.tech) continue;
-    const v = verdictFor(s);
+    const v = verdictFor(s, method);
     if (!v || v.insufficient_data || typeof v.cmp !== "number") continue;
     rows.push({ s, v });
   }
@@ -211,7 +222,7 @@ export function buildSections(
       link: n.link ?? null,
       source: n.source ?? null,
     }));
-    const v = verdictFor(s)!;
+    const v = verdictFor(s, method)!;
     return {
       ...p,
       plain_why: (v.reasons || []).slice(0, 4).map((x) => plainReason(String(x))).join(" · "),
@@ -224,7 +235,7 @@ export function buildSections(
         pe: s.funda?.fields?.pe_ttm ?? "UNKNOWN",
         roe_pct: s.funda?.fields?.roe_pct ?? "UNKNOWN",
         debt_equity: s.funda?.fields?.debt_equity ?? "UNKNOWN",
-        funda_quality: s.funda?.fields?.funda_quality ?? "UNKNOWN",
+        funda_quality: isDataGapFunda(s.funda) ? "UNKNOWN" : (s.funda?.fields?.funda_quality ?? "UNKNOWN"),
         source: s.funda?.sources?.[0] ?? null,
       },
       news: { items, note: s.news?.note ?? "news not fetched" },
@@ -412,7 +423,13 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
       return;
     }
     const yahoo = `${t}.NS`;
-    const r = await fetchYahooChartX(yahoo, "1y", { minBars: 30 });
+    let r = await fetchYahooChartX(yahoo, "1y", { minBars: 30 });
+    // Yahoo occasionally serves the based_on_close row with null OHLC (seen 2026-09-25 for 8/76
+    // names during market hours). Ask the other Yahoo host once; if it's still missing → UNKNOWN.
+    if (r.ok && !r.bars.some((b) => b.date === based_on_close) && Date.now() < scheduleCutoff) {
+      const r2nd = await fetchYahooChartX(yahoo, "1y", { minBars: 30, host: "query2", retries: 1 });
+      if (r2nd.ok && r2nd.bars.some((b) => b.date === based_on_close)) r = r2nd;
+    }
     touch("tech");
     if (first20 < 20) {
       first20++;
@@ -431,7 +448,14 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
     const last = bars[bars.length - 1];
     if (!last || last.date !== based_on_close) {
       lanes.tech.failed++;
-      unknowns.push({ ticker: t, lane: "tech", reason: `yahoo_missing_bar: no settled bar for ${based_on_close}${last ? ` (last ${last.date})` : ""}` });
+      const nullRow = r.null_row_dates?.includes(based_on_close);
+      unknowns.push({
+        ticker: t,
+        lane: "tech",
+        reason: nullRow
+          ? `yahoo_null_bar: Yahoo returned the ${based_on_close} row with null OHLC${last ? ` (last usable ${last.date})` : ""} — not filled`
+          : `yahoo_missing_bar: no settled bar for ${based_on_close}${last ? ` (last ${last.date})` : ""}`,
+      });
       symbols[t] = base;
       return;
     }
@@ -464,17 +488,20 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
     return v != null && v.action !== "avoid";
   });
   lanes.funda.skipped = universe.filter((t) => symbols[t]?.tech).length - fundaTargets.length;
+  // Pacing lives in funda.ts (process-wide token bucket + 429 cool-down/retry): Screener
+  // 429s after ~20 quick requests. ~55 names take ~60 s — fine under Fluid's 300 s.
+  const fundaCutoff = fluidOff ? t0 + 50_000 : scheduleCutoff + 30_000;
   await mapPool(fundaTargets, 2, async (t) => {
-    if (Date.now() > scheduleCutoff + 30_000) {
+    if (Date.now() > fundaCutoff) {
+      lanes.funda.failed++;
       unknowns.push({ ticker: t, lane: "funda", reason: "deadline_not_fetched" });
       return;
     }
-    await new Promise((r) => setTimeout(r, 250 + Math.random() * 400));
-    const f = await fetchLiveFunda(t, `${t}.NS`, { yahoo: false }).catch(() => null);
+    const f = await fetchLiveFunda(t, `${t}.NS`, { yahoo: false, deadlineAt: fundaCutoff }).catch(() => null);
     touch("funda");
     if (!f || isDataGapFunda({ fields: f.fields, sources: f.sources, note: f.note })) {
       lanes.funda.failed++;
-      unknowns.push({ ticker: t, lane: "funda", reason: "screener_unavailable_or_blocked" });
+      unknowns.push({ ticker: t, lane: "funda", reason: f?.screener_error ? `${f.screener_error} (PE/ROE/D-E UNKNOWN)` : "screener_unavailable_or_blocked" });
     } else lanes.funda.ok++;
     if (f) symbols[t].funda = { fields: f.fields, sources: f.sources, note: f.note };
   });
@@ -536,18 +563,19 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
   return { report, inputs };
 }
 
-export function inputsHash(inputs: ReportInputs): string {
+export function inputsHash(inputs: ReportInputs, method: string = METHOD_VERSION): string {
   return sha256hex(
-    canonicalJSON({ universe_sorted: [...inputs.universe].sort(), inputs, budget_inr: BUDGET_INR, risk_pct: RISK_PCT, method_version: METHOD_VERSION })
+    canonicalJSON({ universe_sorted: [...inputs.universe].sort(), inputs, budget_inr: BUDGET_INR, risk_pct: RISK_PCT, method_version: method })
   );
 }
 
 export function assembleReport(
   inputs: ReportInputs,
   prev: ReportV1 | null,
-  meta: { lanes: Record<Lane, LaneStat>; unknowns: ReportV1["unknowns"]; partial: boolean; generated_at: string; elapsed_ms: number; scan_deadline_ms: number }
+  meta: { lanes: Record<Lane, LaneStat>; unknowns: ReportV1["unknowns"]; partial: boolean; generated_at: string; elapsed_ms: number; scan_deadline_ms: number; method_version?: string }
 ): ReportV1 {
-  const { sections, unknownsFromData } = buildSections(inputs, prev);
+  const method = meta.method_version || METHOD_VERSION;
+  const { sections, unknownsFromData } = buildSections(inputs, prev, method);
   const allUnknowns = [...meta.unknowns];
   for (const u of unknownsFromData) if (!allUnknowns.some((x) => x.ticker === u.ticker && x.lane === u.lane)) allUnknowns.push(u);
   const body: Omit<ReportV1, "report_hash"> = {
@@ -558,9 +586,9 @@ export function assembleReport(
     label: `Based on close of ${fmtDayLabel(inputs.based_on_close)} · For session ${fmtDayLabel(inputs.for_session)}`,
     generated_at: meta.generated_at,
     status: meta.partial ? "partial" : "complete",
-    method_version: METHOD_VERSION,
+    method_version: method,
     universe_version: universeVersion(inputs.universe),
-    inputs_hash: inputsHash(inputs),
+    inputs_hash: inputsHash(inputs, method),
     budget_inr: BUDGET_INR,
     risk_pct: RISK_PCT,
     sebi_banner: SEBI_BANNER,
@@ -569,6 +597,9 @@ export function assembleReport(
       "Levels: entry = close, SL = entry − 2.4×ATR14, ATR level T1 = +2×ATR, T2 = +3.5×ATR (risk.ts deriveLevels). Confidence is a gate score, not a probability.",
       "Research / paper setups only — this service is not SEBI-registered.",
       "Sector preference (high-delivery PSU/Infra/Banks/IT/Energy) NOT applied: delivery % is not available from our feeds.",
+      ...(fundaGapPolicy(method) === "unknown"
+        ? ["Fundamentals missing (Screener unavailable) are shown as UNKNOWN, never estimated; such names are judged on the tape with confidence capped one notch (flag funda_unknown)."]
+        : []),
     ],
     calendar: { source: CALENDAR_SOURCE, holiday_file: HOLIDAY_FILE, ...(calendarVerified(inputs.for_session) ? {} : { unverified: true }) },
     lanes: meta.lanes,
@@ -597,6 +628,7 @@ export function verifyReport(stored: ReportV1, inputs: ReportInputs, prev: Repor
     generated_at: stored.generated_at,
     elapsed_ms: stored.timing.elapsed_ms,
     scan_deadline_ms: stored.timing.scan_deadline_ms,
+    method_version: stored.method_version,
   });
   return { ok: re.report_hash === stored.report_hash && re.inputs_hash === stored.inputs_hash, recomputed_hash: re.report_hash };
 }

@@ -17,6 +17,8 @@ export interface FundaLane extends LaneResult {
   sources: string[];
   note: string;
   ts: string;
+  /** Set when Screener was needed but returned nothing usable (why the gaps are UNKNOWN). */
+  screener_error?: ScreenerFailure;
 }
 
 function round(n: number, d = 2): number {
@@ -69,31 +71,117 @@ interface ScreenerStats {
   source: string;
 }
 
-async function fetchScreenerStats(ticker: string): Promise<ScreenerStats | null> {
-  const cons = await fetchScreenerPage(ticker, true);
-  // Some companies (e.g. IRFC) have no consolidated statements → blank ratios; try standalone.
-  if (cons && (cons.pe != null || cons.roe != null)) return cons;
-  const standalone = await fetchScreenerPage(ticker, false);
-  return standalone && (standalone.pe != null || standalone.roe != null) ? standalone : cons || standalone;
+/** Why a Screener lookup produced no numbers (used as the UNKNOWN reason; never estimated). */
+export type ScreenerFailure =
+  | "screener_429"
+  | "screener_timeout"
+  | "screener_network"
+  | "screener_http_404"
+  | "screener_http_5xx"
+  | "screener_http_other"
+  | "screener_parse_empty" // page too short / not a company page
+  | "screener_blank_ratios" // real page, but Screener shows no P/E, ROE or D/E (e.g. IDEA)
+  | "screener_deadline";
+
+type PageResult = { ok: true; stats: ScreenerStats } | { ok: false; error: ScreenerFailure };
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Screener.in sits behind an nginx request limit. Measured from our box on
+ * 2026-09-25: ~20 requests go through at ~2.4 req/s, then every request gets
+ * HTTP 429 "Too many requests" (no Retry-After header); at ~1.1 req/s
+ * sustained, 51/51 succeeded. The old report funda pass (pool 2, 250–650 ms
+ * jitter, plus a standalone-page retry on every failure) ran at ~2.4 req/s and
+ * lost 20–21 of 53 names to 429.
+ *
+ * Process-wide token bucket shared by every caller (report cron, lookup,
+ * budget picks): burst 8, then 1 request per 1.15 s. A 429 empties the bucket
+ * and pauses all callers for a cool-down before the request is retried.
+ */
+const SCREENER_BURST = 8;
+const SCREENER_REFILL_MS = 1150;
+const SCREENER_429_COOLDOWN_MS = [6000, 12000];
+const bucket = { tokens: SCREENER_BURST, updatedAt: 0, pausedUntil: 0 };
+
+async function screenerSlot(deadlineAt?: number): Promise<boolean> {
+  for (;;) {
+    const now = Date.now();
+    if (bucket.updatedAt === 0) bucket.updatedAt = now;
+    const refill = Math.floor((now - bucket.updatedAt) / SCREENER_REFILL_MS);
+    if (refill > 0) {
+      bucket.tokens = Math.min(SCREENER_BURST, bucket.tokens + refill);
+      bucket.updatedAt += refill * SCREENER_REFILL_MS;
+    }
+    if (now >= bucket.pausedUntil && bucket.tokens > 0) {
+      bucket.tokens--;
+      return true;
+    }
+    const waitMs = Math.max(bucket.pausedUntil - now, bucket.updatedAt + SCREENER_REFILL_MS - now, 50);
+    if (deadlineAt != null && now + waitMs > deadlineAt) return false;
+    await sleep(waitMs);
+  }
 }
 
-async function fetchScreenerPage(ticker: string, consolidated: boolean): Promise<ScreenerStats | null> {
+function screener429(attempt: number) {
+  bucket.tokens = 0;
+  bucket.updatedAt = Date.now();
+  const cool = SCREENER_429_COOLDOWN_MS[Math.min(attempt, SCREENER_429_COOLDOWN_MS.length - 1)] + Math.random() * 1000;
+  bucket.pausedUntil = Math.max(bucket.pausedUntil, Date.now() + cool);
+}
+
+async function fetchScreenerStats(ticker: string, deadlineAt?: number): Promise<PageResult> {
+  const cons = await fetchScreenerPage(ticker, true, deadlineAt);
+  // Some companies (e.g. IRFC) have no consolidated statements → blank ratios; try standalone.
+  // Only for a real page with blank ratios — a 429/timeout says nothing about the company.
+  if (cons.ok && (cons.stats.pe != null || cons.stats.roe != null)) return cons;
+  if (!cons.ok && !["screener_parse_empty", "screener_blank_ratios", "screener_http_404"].includes(cons.error)) return cons;
+  const standalone = await fetchScreenerPage(ticker, false, deadlineAt);
+  if (standalone.ok && (standalone.stats.pe != null || standalone.stats.roe != null)) return standalone;
+  if (cons.ok) return cons;
+  if (standalone.ok) return standalone;
+  if (cons.error === "screener_http_404") return standalone;
+  // Prefer the more informative consolidated error unless standalone hit a throttle/timeout.
+  return ["screener_http_404", "screener_blank_ratios", "screener_parse_empty"].includes(standalone.error) ? cons : standalone;
+}
+
+async function fetchScreenerPage(ticker: string, consolidated: boolean, deadlineAt?: number): Promise<PageResult> {
   const url = `https://www.screener.in/company/${encodeURIComponent(
     ticker
   )}/${consolidated ? "consolidated/" : ""}`;
-  try {
-    const res = await fetch(url, {
-      headers: {
-        "User-Agent": UA,
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "en-IN,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(8000),
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
+  let lastErr: ScreenerFailure = "screener_network";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!(await screenerSlot(deadlineAt))) return { ok: false, error: attempt ? lastErr : "screener_deadline" };
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        headers: {
+          "User-Agent": UA,
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-IN,en;q=0.9",
+        },
+        signal: AbortSignal.timeout(8000),
+        cache: "no-store",
+      });
+    } catch (e) {
+      lastErr = e instanceof Error && /timeout|abort/i.test(e.name + e.message) ? "screener_timeout" : "screener_network";
+      continue;
+    }
+    if (res.status === 429) {
+      await res.body?.cancel().catch(() => {});
+      lastErr = "screener_429";
+      screener429(attempt);
+      continue;
+    }
+    if (res.status === 404) return { ok: false, error: "screener_http_404" };
+    if (res.status >= 500) {
+      lastErr = "screener_http_5xx";
+      await sleep(1000 + Math.random() * 1000);
+      continue;
+    }
+    if (!res.ok) return { ok: false, error: "screener_http_other" };
     const html = await res.text();
-    if (html.length < 1000) return null;
+    if (html.length < 1000) return { ok: false, error: "screener_parse_empty" };
 
     const pick = (label: string): number | null => {
       const re = new RegExp(
@@ -109,16 +197,11 @@ async function fetchScreenerPage(ticker: string, consolidated: boolean): Promise
       const m = html.match(/Debt to equity[^0-9]*([0-9]+(?:\.[0-9]+)?)/i);
       if (m) debt = parseNumberLoose(m[1]);
     }
-
-    return {
-      pe: pick("Stock P/E"),
-      roe: pick("ROE"),
-      debtEquity: debt,
-      source: url,
-    };
-  } catch {
-    return null;
+    const stats = { pe: pick("Stock P/E"), roe: pick("ROE"), debtEquity: debt, source: url };
+    if (stats.pe == null && stats.roe == null && stats.debtEquity == null) return { ok: false, error: "screener_blank_ratios" };
+    return { ok: true, stats };
   }
+  return { ok: false, error: lastErr };
 }
 
 export function computeFundaQuality(fields: Record<string, unknown>): {
@@ -176,6 +259,8 @@ export interface FundaOpts {
   screener?: boolean;
   /** Try Yahoo quoteSummary (crumb/cookie) first (default true). Cron jobs pass false (brief §2.9). */
   yahoo?: boolean;
+  /** Epoch ms: don't wait for a Screener slot past this (report cron budget). */
+  deadlineAt?: number;
 }
 
 export async function fetchLiveFunda(
@@ -228,8 +313,11 @@ export async function fetchLiveFunda(
       fields.roe_pct == null ||
       fields.debt_equity == null);
 
+  let screenerError: ScreenerFailure | undefined;
   if (needScreener) {
-    const scr = await fetchScreenerStats(ticker);
+    const res = await fetchScreenerStats(ticker, opts.deadlineAt);
+    const scr = res.ok ? res.stats : null;
+    if (!res.ok) screenerError = res.error;
     if (scr) {
       sources.push(scr.source);
       if (fields.pe_ttm == null && scr.pe != null) fields.pe_ttm = scr.pe;
@@ -239,7 +327,7 @@ export async function fetchLiveFunda(
       }
       notes.push("Screener HTML best-effort");
     } else {
-      notes.push("Screener blocked/fail — gaps left unknown");
+      notes.push(`Screener unavailable (${screenerError}) — gaps left unknown`);
     }
   }
 
@@ -265,6 +353,7 @@ export async function fetchLiveFunda(
     sources,
     note: notes.join("; "),
     ts: new Date().toISOString(),
+    ...(screenerError ? { screener_error: screenerError } : {}),
   };
 }
 
