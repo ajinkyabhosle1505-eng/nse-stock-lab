@@ -111,7 +111,12 @@ if (!DB) {
   const pos = await call("/api/paper/positions", { method: "POST", body: { idempotency_key: "abcdefgh1", ticker: "ITC" } });
   const buy = await call("/api/paper/buy", { method: "POST", body: { ticker: "ITC", entry: 300, sl: 290, targets: [320, 330], atr_14: 5, qty: 1, checkDays: [7] } });
   const mk = await call("/api/paper/mark-forecasts", { method: "POST", body: { positions: [] } });
-  check("no-DB fallback", me.json.storage === "none" && pos.status === 503 && buy.status === 200 && mk.status === 200, `me=${me.json.storage} positions=${pos.status} buy=${buy.status} mark=${mk.status}`);
+  if (me.json.storage === "redis") {
+    // production has a DB: the no-DB fallback does not apply; old client-trust routes must be 410, positions need an identity
+    check("DB mode (no-DB fallback n/a): old routes 410, positions need identity", pos.status === 401 && buy.status === 410 && mk.status === 410, `me=${me.json.storage} positions=${pos.status} buy=${buy.status} mark=${mk.status}`);
+  } else {
+    check("no-DB fallback", me.json.storage === "none" && pos.status === 503 && buy.status === 200 && mk.status === 200, `me=${me.json.storage} positions=${pos.status} buy=${buy.status} mark=${mk.status}`);
+  }
 } else {
   const dev = await call("/api/identity/device", { method: "POST" });
   const code = dev.json.recovery_code;

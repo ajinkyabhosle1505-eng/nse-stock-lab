@@ -53,7 +53,7 @@ cd web
 node scripts/mock-upstash.mjs 8079 &            # local mock of the Upstash REST API
 UPSTASH_REDIS_REST_URL=http://127.0.0.1:8079 UPSTASH_REDIS_REST_TOKEN=dev npx tsx --tsconfig tsconfig.json scripts/acceptance.lib.test.ts
 node scripts/acceptance.http.mjs http://localhost:3101 --db --secret=testsecret   # server started with the mock env
-node scripts/acceptance.http.mjs https://nse-stock-lab.vercel.app                 # production (read-only checks)
+node scripts/acceptance.http.mjs https://nse-stock-lab.vercel.app                 # production (read-only checks; DB mode → "no-DB fallback" is replaced by a 410/401 check)
 ```
 
 ## Diagnosing a thin report (UNKNOWNs / short Top 10)
@@ -175,3 +175,7 @@ missing bars, P3.1c `?version=1`, P3.3a stale index rows labelled (v3.1 reports)
 Ops check after a gap day: `GET /api/report/latest` → `report_version`, `versions[]`, `report.incomplete`,
 `report.data_fills`, `report.close_fallback`. Manual retry (same day): `curl -H "Authorization: Bearer $CRON_SECRET"
 https://nse-stock-lab.vercel.app/api/cron/premarket-retry`.
+
+Shipped in `4b53971` (Vercel success). The stored 2026-10-06 report (report_v2, `complete`) stays as is — a
+complete report is never superseded; on /report its 1 Oct index rows are now labelled at render time
+("Index data as of 1 Oct (Yahoo had no 5 Oct bar)"). The first v3.1 report is the 2026-10-07 one.
