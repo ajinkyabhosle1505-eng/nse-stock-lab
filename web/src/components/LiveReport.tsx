@@ -5,6 +5,7 @@ import type { ReportV1 } from "@/lib/reportTypes";
 import { fmtDayLabel } from "@/lib/marketCalendar";
 import { inr } from "@/lib/format";
 import { SEBI_BANNER } from "@/lib/universe";
+import { barAsOf, indexAsOf } from "@/lib/staleLabel";
 
 type Envelope = {
   report: ReportV1;
@@ -16,6 +17,8 @@ type Envelope = {
   storage: "redis" | "ephemeral";
   storage_note?: string;
   served?: { source: string; note?: string };
+  report_version?: number;
+  versions?: { version: number; status: string; report_hash: string; generated_at: string; missing: number | null }[];
 };
 
 function hhmmIst(iso: string) {
@@ -94,9 +97,11 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
         </p>
         <p className="text-[11px] text-slate-500">{SEBI_BANNER}</p>
         <p className="text-[11px] text-slate-400">
-          For session {fmtDayLabel(r.for_session)} · {r.status} · <span className="font-mono">{r.report_hash.slice(0, 12)}</span>
+          For session {fmtDayLabel(r.for_session)} · {r.status}
+          {r.version && r.version > 1 ? ` · version ${r.version}` : ""} · <span className="font-mono">{r.report_hash.slice(0, 12)}</span>
           {env.storage === "ephemeral" ? " · not archived (no database yet)" : ""}
         </p>
+        {r.version && r.version > 1 && r.version_note ? <p className="text-[11px] text-sky-200">{r.version_note}</p> : null}
         {env.holiday ? (
           <p className="rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">NSE closed today ({env.holiday.name}). Showing the last report.</p>
         ) : null}
@@ -106,8 +111,24 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
           </p>
         ) : null}
         {r.status === "partial" ? (
-          <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            Partial: {nFailed} of {mo.breadth.scanned + nFailed} symbols could not be fetched and are listed as UNKNOWN. Nothing was estimated.
+          <div className="rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            {r.incomplete ? (
+              <>
+                <p>{r.incomplete.note}</p>
+                {r.incomplete.missing_bars.length ? (
+                  <p className="mt-1 text-[11px] text-amber-200/90">
+                    Missing {fmtDayLabel(r.based_on_close)} bar: {r.incomplete.missing_bars.map((m) => (m.kind === "index" ? `${m.symbol} (index${m.last_bar_date ? `, last ${m.last_bar_date}` : ""})` : m.symbol)).join(", ")}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              <p>Partial: {nFailed} symbols could not be fetched and are listed as UNKNOWN. Nothing was estimated.</p>
+            )}
+          </div>
+        ) : null}
+        {r.data_fills?.length ? (
+          <p className="text-[11px] text-slate-400">
+            Filled from official end-of-day files (Yahoo had no {fmtDayLabel(r.based_on_close)} bar): {r.data_fills.map((f) => `${f.symbol} (${f.close_source})`).join(", ")}
           </p>
         ) : null}
         {env.served?.note ? <p className="text-xs text-amber-200">{env.served.note}</p> : null}
@@ -116,11 +137,19 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
 
       <Card title="Market overview">
         <div className="space-y-1 text-sm text-slate-300">
-          {mo.indices.map((i) => (
-            <p key={i.symbol}>
-              {i.name}: {num(i.close)} ({i.chg_pct === "UNKNOWN" ? "UNKNOWN" : `${i.chg_pct > 0 ? "+" : ""}${i.chg_pct}%`}){i.bar_date ? ` · ${i.bar_date}` : ""}
-            </p>
-          ))}
+          {mo.indices.map((i) => {
+            // v3.1 reports store the label; older reports get it computed here (display only)
+            const lab = i.as_of_label != null ? { stale: !!i.stale, label: i.as_of_label } : indexAsOf(i, r.based_on_close);
+            return (
+              <p key={i.symbol}>
+                {i.name}: {num(i.close)} ({i.chg_pct === "UNKNOWN" ? "UNKNOWN" : `${i.chg_pct > 0 ? "+" : ""}${i.chg_pct}%`}){i.bar_date ? ` · ${i.bar_date}` : ""}
+                {lab ? (
+                  <span className={`ml-2 rounded px-1.5 py-0.5 text-[11px] ${lab.stale ? "bg-amber-500/15 text-amber-200" : "bg-sky-500/10 text-sky-200"}`}>{lab.label}</span>
+                ) : null}
+              </p>
+            );
+          })}
+          {mo.data_as_of_note ? <p className="text-xs text-amber-200">{mo.data_as_of_note}</p> : null}
           <p className="text-xs text-slate-400">
             Breadth ({mo.breadth.scanned} scanned): above 50-DMA {mo.breadth.above_dma50} · HH/HL {mo.breadth.hh_hl} · buy {mo.breadth.buy} / hold {mo.breadth.hold} / avoid {mo.breadth.avoid} · unknown {mo.breadth.unknown}
           </p>
@@ -157,7 +186,7 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
               left={`${p.rank}. ${p.ticker}`}
               mid={`${p.sector || "—"} · conf ${p.confidence_1_10}/10`}
               right={`Close ${inr(p.cmp)}`}
-              sub={`SL ${inr(p.sl)} · ${p.rr_plain ? "T1" : "ATR level T1"} ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)}${p.rr_plain ? ` · ${p.rr_plain}` : p.r_r != null ? ` · T1 R:R ${p.r_r}` : ""} — ${p.plain_why}${p.risk_flags?.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}`}
+              sub={`SL ${inr(p.sl)} · ${p.rr_plain ? "T1" : "ATR level T1"} ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)}${p.rr_plain ? ` · ${p.rr_plain}` : p.r_r != null ? ` · T1 R:R ${p.r_r}` : ""} — ${p.plain_why}${p.risk_flags?.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}${(p.close_label ?? barAsOf(p.bar_date, r.based_on_close)) ? ` · ${p.close_label ?? barAsOf(p.bar_date, r.based_on_close)}` : ""}`}
             />
           ))}
           {!s.top10_under_1000.items.length ? <Empty note={s.top10_under_1000.note} /> : null}

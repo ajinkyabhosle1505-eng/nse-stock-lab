@@ -3,6 +3,8 @@
  * and explain every symbol — UNKNOWN reason, or why it is / isn't in Top 10.
  *   npx tsx --tsconfig tsconfig.json scripts/report-diagnose.ts 2026-09-25 [out.json]
  *   npx tsx --tsconfig tsconfig.json scripts/report-diagnose.ts --inputs saved.json   (offline, pure rebuild)
+ * Also prints (report_v3.1) the missing based_on_close bars, official-file fills (close_source)
+ * and the "as of" label of every index. BHAVCOPY_FALLBACK=0 disables the official-file fill.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { generateReport, buildSections, verdictFor, METHOD_VERSION, type ReportInputs } from "../src/lib/report";
@@ -57,6 +59,13 @@ async function main() {
     top10 = gen.report.sections.top10_under_1000.items.map((p) => p.ticker);
     console.log(`generated ${gen.report.key} based_on_close=${gen.report.based_on_close} status=${gen.report.status} in ${Date.now() - t0} ms`);
     console.log("lanes", JSON.stringify(gen.report.lanes));
+    // report_v3.1 data-gap view: what is missing, what was filled from official EOD files
+    const r = gen.report;
+    console.log(`missing based_on_close bars: ${r.incomplete?.missing_bars.map((m) => `${m.symbol}${m.kind === "index" ? `(index, last ${m.last_bar_date})` : ""}`).join(", ") || "none"}`);
+    console.log(`filled from official files: ${r.data_fills?.map((f) => `${f.symbol}=${f.close} (${f.close_source})`).join(", ") || "none"}`);
+    console.log(`close sources: ${JSON.stringify(r.close_sources || {})}`);
+    if (r.close_fallback) for (const f of r.close_fallback.files) console.log(`  file ${f.ok ? "OK " : "ERR"} ${f.url}${f.rows ? ` rows=${f.rows}` : ""}${f.error ? ` ${f.error}` : ""}`);
+    for (const ix of r.sections.market_overview.indices) console.log(`  index ${ix.symbol.padEnd(10)} ${String(ix.close).padStart(10)} @${ix.bar_date}${ix.as_of_label ? ` [${ix.as_of_label}]` : ""}`);
     if (args[1]) writeFileSync(args[1], JSON.stringify({ report: gen.report, inputs }, null, 1));
   }
   rrCompare(inputs);

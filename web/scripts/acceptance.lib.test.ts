@@ -9,7 +9,7 @@ import { expectedReportSession, isTradingDay, prevTradingDay } from "../src/lib/
 import { generateReport, verifyReport, reportUniverse, verdictFor, assembleReport, METHOD_VERSION } from "../src/lib/report";
 import { mergeVerdict } from "../src/lib/risk";
 import type { TechLane } from "../src/lib/types";
-import { getReport, getReportInputs, putReportOnce, listReportDates } from "../src/lib/reportStore";
+import { getReport, getReportInputs, getReportVersion, listReportVersions, putReportOnce, putReportUpgrade, listReportDates } from "../src/lib/reportStore";
 import { reportSessions, runPremarket, serveLatest } from "../src/lib/reportService";
 import { acquireLease, getJobRun } from "../src/lib/jobs/lock";
 import { markForecastPoints, buildForecastBundle, computeScoreSummary } from "../src/lib/forecast";
@@ -95,8 +95,16 @@ async function main() {
   const v2Picks = asV2.sections.top10_under_1000.items;
   check(
     "P1.8d v2 report re-verifies with v2 rules (legacy levels, no v3 fields)",
-    verifyReport(asV2, JSON.parse(JSON.stringify(gen.inputs)), null).ok && v2Picks.every((p) => !("rr_plain" in p)) && !("rr_capped" in asV2.sections.top10_under_1000) && rep.method_version === METHOD_VERSION && METHOD_VERSION.startsWith("report_v3|"),
+    verifyReport(asV2, JSON.parse(JSON.stringify(gen.inputs)), null).ok && v2Picks.every((p) => !("rr_plain" in p)) && !("rr_capped" in asV2.sections.top10_under_1000) && rep.method_version === METHOD_VERSION && METHOD_VERSION.startsWith("report_v3.1|"),
     `v2 picks=${v2Picks.length} r_r=${[...new Set(v2Picks.map((p) => p.r_r))].join("/")}`
+  );
+
+  // #8e stored report_v3 (pre-3.1) reports still verify, and carry none of the v3.1 fields
+  const asV3 = assembleReport(gen.inputs, null, { lanes: rep.lanes, unknowns: rep.unknowns, partial: rep.status === "partial", generated_at: rep.generated_at, elapsed_ms: rep.timing.elapsed_ms, scan_deadline_ms: rep.timing.scan_deadline_ms, method_version: "report_v3|risk_v3|atr_piecewise_T1_T2_v2", version: 3 });
+  check(
+    "P1.8e v3 report re-verifies with v3 rules (no v3.1 fields)",
+    verifyReport(asV3, JSON.parse(JSON.stringify(gen.inputs)), null).ok && !("version" in asV3) && !("incomplete" in asV3) && asV3.key === "report:2026-09-25" && asV3.sections.market_overview.indices.every((i) => !("as_of_label" in i)) && rep.version === 1 && "incomplete" in rep,
+    `v3 key ${asV3.key} · v3.1 version ${rep.version} status ${rep.status} missing ${rep.incomplete?.missing_bars.length ?? 0}`
   );
 
   // #15 R:R floor (risk_v3) on every live symbol: no buy with T1 < 1R or T2 < 1.8R;
@@ -165,8 +173,9 @@ async function main() {
   check("P1.8b determinism from STORED inputs", !!storedInputs && verifyReport(after!, storedInputs!, null).ok);
 
   // #3 idempotency / #10 cron replay: runPremarket twice → exists/noop, one report
-  const a1 = await runPremarket({ source: "test", now: ist("2026-09-25T06:45:00"), forSession });
-  const a2 = await runPremarket({ source: "test", now: ist("2026-09-25T06:46:00"), forSession });
+  // allowUpgrade:false — this checks replay idempotency; the partial→upgrade path is tested in P3.*
+  const a1 = await runPremarket({ source: "test", now: ist("2026-09-25T06:45:00"), forSession, allowUpgrade: false });
+  const a2 = await runPremarket({ source: "test", now: ist("2026-09-25T06:46:00"), forSession, allowUpgrade: false });
   const lease = await acquireLease("premarket-report", "2026-09-26x", 60);
   const lease2 = await acquireLease("premarket-report", "2026-09-26x", 60);
   check("P1.3 idempotency (noop + lock)", a1.action === "exists" && a2.noop === true && !!lease && lease2 === null && (await listReportDates()).filter((d) => d === forSession).length === 1, `${a1.action} → ${a2.action}`);
@@ -266,6 +275,129 @@ async function main() {
   const sts = views1[0].forecast!.points.map((p) => `${p.dayOffset}:${p.status}@${p.actualSessionDate}`).join(" ");
   check("P2.10 replay: no duplicate actuals, same score_summary", fin2.scored === 0 && JSON.stringify(scoreViews(views1)) === JSON.stringify(scoreViews(views2)), `run1 scored=${fin1.scored} sparse=${fin1.sparse}; run2 scored=${fin2.scored}; ${sts}`);
   check("P2.12 score rebuild identical", JSON.stringify(scoreViews(await loadViews([pos.id]))) === JSON.stringify(scoreViews(views2)));
+
+
+  // ---- report_v3.1: data gaps (P3.*) — small universe, mocked Yahoo holes + mocked official files ----
+  await fetch(`${process.env.UPSTASH_REDIS_REST_URL}`, { method: "POST", headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` }, body: JSON.stringify(["FLUSHALL"]) });
+  {
+    const D = "2026-09-25";
+    const BOC = "2026-09-24";
+    const U31 = ["BEL", "COALINDIA", "ITC", "KOTAKBANK", "NTPC", "SBIN"];
+    const istD = (ts: number) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(ts * 1000));
+    const captured: Record<string, { o: number; h: number; l: number; c: number; v: number; prev: number }> = {};
+    const mode: { nullSyms: Set<string>; bhav: "403" | "serve" } = { nullSyms: new Set(), bhav: "403" };
+    const bhavHits: string[] = [];
+    const real = globalThis.fetch;
+    const fullCsv = () => {
+      const row = (sym: string, date: string, prevMul = 1) => {
+        const k = captured[`${sym}.NS`];
+        return `${sym}, EQ, ${date}, ${(k.prev * prevMul).toFixed(2)}, ${k.o}, ${k.h}, ${k.l}, ${k.c}, ${k.c}, ${k.c}, ${k.v}, 1, 1, 1, 50`;
+      };
+      const lines = ["SYMBOL, SERIES, DATE1, PREV_CLOSE, OPEN_PRICE, HIGH_PRICE, LOW_PRICE, LAST_PRICE, CLOSE_PRICE, AVG_PRICE, TTL_TRD_QNTY, TURNOVER_LACS, NO_OF_TRADES, DELIV_QTY, DELIV_PER"];
+      if (captured["KOTAKBANK.NS"]) lines.push(row("KOTAKBANK", "24-Sep-2026")); // good row → fill
+      if (captured["NTPC.NS"]) lines.push(row("NTPC", "23-Sep-2026")); // wrong date → never used
+      if (captured["ITC.NS"]) lines.push(row("ITC", "24-Sep-2026", 1.1)); // prev close ≠ Yahoo → corporate-action guard
+      return lines.join("\n");
+    };
+    const idxCsv = () => {
+      const k = captured["^NSEI"];
+      return `Index Name,Index Date,Open Index Value,High Index Value,Low Index Value,Closing Index Value,Points Change,Change(%),Volume,Turnover (Rs. Cr.),P/E,P/B,Div Yield\nNifty 50,24-09-2026,${k.o},${k.h},${k.l},${k.c},${(k.c - k.prev).toFixed(2)},0.1,1,1,1,1,1`;
+    };
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const u = String(input instanceof Request ? input.url : input);
+      if (/nsearchives\.nseindia\.com|bseindia\.com/.test(u)) {
+        bhavHits.push(u);
+        if (mode.bhav === "403") return new Response("Forbidden", { status: 403 });
+        if (/sec_bhavdata_full_24092026\.csv$/.test(u)) return new Response(fullCsv(), { status: 200 });
+        if (/ind_close_all_24092026\.csv$/.test(u) && captured["^NSEI"]) return new Response(idxCsv(), { status: 200 });
+        return new Response("Not Found", { status: 404 });
+      }
+      const m = u.match(/\/v8\/finance\/chart\/([^?]+)/);
+      const sym = m ? decodeURIComponent(m[1]) : "";
+      if (m && mode.nullSyms.has(sym)) {
+        const res = await real(input as RequestInfo, init);
+        const j = await res.json();
+        const r0 = j?.chart?.result?.[0];
+        const q = r0?.indicators?.quote?.[0];
+        const i = (r0?.timestamp || []).findIndex((t: number) => istD(t) === BOC);
+        if (q && i > 0) {
+          captured[sym] = { o: q.open[i], h: q.high[i], l: q.low[i], c: q.close[i], v: q.volume?.[i] ?? 0, prev: q.close[i - 1] };
+          for (const f of ["open", "high", "low", "close", "volume"]) if (q[f]) q[f][i] = null; // Yahoo's "null row"
+        }
+        return new Response(JSON.stringify(j), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return real(input as RequestInfo, init);
+    }) as typeof fetch;
+    try {
+      // P3.1 partial (Yahoo null rows for 2 stocks + Nifty, official files blocked) → upgrade to complete
+      mode.nullSyms = new Set(["KOTAKBANK.NS", "NTPC.NS", "^NSEI"]);
+      mode.bhav = "403";
+      const p1 = await runPremarket({ source: "test", now: ist(`${D}T06:40:00`), forSession: D, universe: U31 });
+      const r1 = p1.report!;
+      const miss1 = r1.incomplete?.missing_bars.map((x) => x.symbol) || [];
+      const names1 = [...r1.sections.top10_under_1000.items, ...r1.sections.avoids5.items].map((x) => x.ticker);
+      const inp1 = await getReportInputs(D, 1);
+      const ok1 = p1.action === "stored_partial" && r1.status === "partial" && r1.version === 1 && ["KOTAKBANK", "NTPC", "^NSEI"].every((t) => miss1.includes(t)) && !names1.includes("KOTAKBANK") && !names1.includes("NTPC") && !!inp1 && verifyReport(r1, inp1, null).ok && r1.unknowns.some((u) => u.ticker === "KOTAKBANK" && /yahoo_null_bar.*bhavcopy: nse_full:http_403/.test(u.reason));
+      // P3.3 stale index label (Yahoo's last Nifty bar is 23 Sep)
+      const nifty = r1.sections.market_overview.indices.find((x) => x.symbol === "^NSEI")!;
+      const ok3 = nifty.stale === true && /^Index data as of \d{1,2} Sep \(Yahoo had no 24 Sep bar\)$/.test(nifty.as_of_label || "") && nifty.bar_date! < BOC && /Not 24 Sep numbers: Nifty 50 as of/.test(r1.sections.market_overview.data_as_of_note || "") && !/Nifty 50 closed at/.test(r1.sections.final_summary.headline) && /not a 24 Sep number/.test(r1.sections.final_summary.headline) && r1.sections.market_overview.indices.filter((x) => x.symbol !== "^NSEI").every((x) => x.bar_date !== BOC || !x.stale);
+      check("P3.3 stale index label (as of + not presented as current)", ok3, `${nifty.as_of_label} · ${r1.sections.final_summary.headline.slice(0, 90)}`);
+      // same-window retry, data still missing → no new version
+      const p2 = await runPremarket({ source: "gha", now: ist(`${D}T07:50:00`), forSession: D, universe: U31 });
+      const nv2 = (await listReportVersions(D)).length;
+      // Yahoo recovers → v2 complete, v1 kept
+      mode.nullSyms = new Set();
+      const p3 = await runPremarket({ source: "gha", now: ist(`${D}T07:52:00`), forSession: D, universe: U31 });
+      const latest = await getReport(D);
+      const v1 = await getReportVersion(D, 1);
+      const inV1 = await getReportInputs(D, 1);
+      const inV2 = await getReportInputs(D, 2);
+      const vers = await listReportVersions(D);
+      const served = (await serveLatest(ist(`${D}T08:53:00`))).body as { report: ReportV1; report_version: number; versions: unknown[] };
+      const ok1b = p2.action === "upgrade_no_improvement" && nv2 === 1 && p3.action === "upgraded_v2_complete" && latest?.version === 2 && latest.status === "complete" && latest.key === `report:${D}:v2` &&
+        latest.supersedes?.version === 1 && latest.supersedes.report_hash === r1.report_hash && v1?.report_hash === r1.report_hash && !!inV1 && !!inV2 && verifyReport(v1!, inV1!, null).ok && verifyReport(latest, inV2!, null).ok &&
+        latest.inputs_hash !== r1.inputs_hash && vers.map((v) => `${v.version}:${v.status}`).join(",") === "1:partial,2:complete" && served.report.version === 2 && served.report_version === 2 && served.versions.length === 2 &&
+        latest.sections.market_overview.indices.every((x) => x.bar_date === BOC && !x.stale) && !latest.incomplete;
+      check("P3.1 partial report → upgrade to complete (v1 kept, both verify, /latest serves v2)", ok1 && ok1b, `${p1.action} [${miss1.join(",")}] → ${p2.action} → ${p3.action}; versions ${vers.map((v) => `${v.version}:${v.status}:${v.inputs_hash.slice(0, 8)}`).join(" ")}`);
+      // P3.2 a complete report is never overwritten / superseded
+      mode.nullSyms = new Set(["KOTAKBANK.NS"]);
+      const p4 = await runPremarket({ source: "gha", now: ist(`${D}T08:10:00`), forSession: D, universe: U31 });
+      const forged = { ...latest!, version: 3, key: `report:${D}:v3`, status: "complete" as const, report_hash: "f".repeat(64) };
+      const up = await putReportUpgrade(forged, inV2!, 2);
+      const once = await putReportOnce({ ...r1, report_hash: "e".repeat(64) }, inV1!);
+      const eod = await runPremarket({ source: "eod-mark:test", now: ist(`${D}T16:40:00`), forSession: D, upgradeOnly: true, universe: U31 });
+      const after = await getReport(D);
+      check(
+        "P3.2 no overwrite of a complete report",
+        p4.noop === true && !up.ok && up.reason === "base_complete" && !once && eod.noop === true && after?.report_hash === latest!.report_hash && (await listReportVersions(D)).length === 2 && (await getReportVersion(D, 1))?.report_hash === r1.report_hash,
+        `${p4.action} · upgrade ${up.ok ? "ok" : up.reason} · putOnce ${once} · eod ${eod.action}`
+      );
+
+      // P3.4 official-file fill (mocked bhavcopy + index close): exact date only, prev-close guard
+      mode.nullSyms = new Set(["KOTAKBANK.NS", "NTPC.NS", "ITC.NS", "^NSEI"]);
+      mode.bhav = "serve";
+      bhavHits.length = 0;
+      const g = await generateReport({ for_session: D, prev: null, universe: U31 });
+      const kb = g.inputs.symbols.KOTAKBANK;
+      const nt = g.report.unknowns.find((u) => u.ticker === "NTPC");
+      const it = g.report.unknowns.find((u) => u.ticker === "ITC");
+      const ni = g.report.sections.market_overview.indices.find((x) => x.symbol === "^NSEI")!;
+      const k = captured["KOTAKBANK.NS"];
+      const fills = (g.report.data_fills || []).map((f) => `${f.symbol}:${f.close_source}`).sort();
+      const miss = g.report.incomplete?.missing_bars.map((x) => x.symbol) || [];
+      const ok4 = kb.bar?.close_source === "nse_bhavcopy" && kb.bar.date === BOC && kb.bar.close === Math.round(k.c * 100) / 100 && kb.tech != null &&
+        !g.report.unknowns.some((u) => u.ticker === "KOTAKBANK" && u.lane === "tech") &&
+        g.inputs.symbols.NTPC.bar == null && /date_mismatch\(2026-09-23\)/.test(nt?.reason || "") &&
+        g.inputs.symbols.ITC.bar == null && /prev_close .* ≠ Yahoo/.test(it?.reason || "") &&
+        ni.close_source === "nse_index_close" && ni.bar_date === BOC && ni.stale === false && /^NSE official index close for 24 Sep \(Yahoo had no 24 Sep bar\)$/.test(ni.as_of_label || "") &&
+        JSON.stringify(fills) === JSON.stringify(["KOTAKBANK:nse_bhavcopy", "^NSEI:nse_index_close"]) && (g.report.close_sources?.nse_bhavcopy ?? 0) === 1 &&
+        miss.includes("NTPC") && miss.includes("ITC") && !miss.includes("KOTAKBANK") && !miss.includes("^NSEI") && g.report.status === "partial" &&
+        verifyReport(g.report, JSON.parse(JSON.stringify(g.inputs)), null).ok && bhavHits.some((h) => /sec_bhavdata_full_24092026/.test(h)) && bhavHits.every((h) => /24092026|20260924/.test(h));
+      check("P3.4 bhavcopy fill (mocked): exact-date official close, tagged, guards hold", ok4, `fills ${fills.join(",")} · NTPC ${nt?.reason.split("; ")[1] || "-"} · ITC ${(it?.reason.split("; ")[1] || "-").slice(0, 60)} · missing ${miss.join(",")}`);
+    } finally {
+      globalThis.fetch = real;
+    }
+  }
 
   const failed = results.filter((x) => !x.ok);
   console.log(`\n${results.length - failed.length}/${results.length} passed`);

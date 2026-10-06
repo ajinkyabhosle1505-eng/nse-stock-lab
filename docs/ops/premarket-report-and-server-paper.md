@@ -22,7 +22,8 @@ After adding env vars, redeploy (Deployments → … → Redeploy) so functions 
 |---|---|---|---|
 | `/api/cron/premarket-report` | `0 1 * * 1-5` | 06:30–07:29 | FINAL marks for the last session + scoring, then build/store `report:<today>` (based on the previous close) |
 | `/api/cron/eod-mark` | `0 11 * * 1-5` | 16:30–17:29 | PROVISIONAL marks only (evening P&L), never scores |
-| GHA backup | `17 2 * * 1-5` / `37 12 * * 1-5` | 07:47 / 18:07 (+GitHub delay) | same endpoints, `?source=gha&finalize_if_partial=1` |
+| `/api/cron/premarket-retry` (v3.1) | `15 2 * * 1-5` | 07:45–08:44 | second pass: if today's report is **partial**, re-fetch + store an upgraded version; noop if complete; builds v1 if the first cron was missed |
+| GHA backup | `17 2 * * 1-5` / `37 12 * * 1-5` | 07:47 / 18:07 (+GitHub delay — observed 6–7 h late, e.g. 14:39 IST on 5 Oct) | same endpoints, `?source=gha&finalize_if_partial=1`; the premarket call now also upgrades a partial report |
 
 NSE holidays (`web/src/data/nse-holidays-2026.json`) → `holiday_skip`. Double runs are blocked by a
 Redis lease `job:lock:<job>:<date>` (SET NX EX 360) and completed runs are recorded at `job:run:<job>:<date>`.
@@ -33,6 +34,9 @@ scope, so copy it to `.github/workflows/cron-backup.yml` via the GitHub web UI (
 ## Tamper-proofing (Redis)
 - `pos:<id>`, `fc:<id>` (forecast + points + input_hash + bundle_hash), `report:<date>`, `act:<id>:<d>`,
   `ev:<id>:<type>` are written once with SET NX. No code path rewrites them.
+- Report versions (report_v3.1): `report:<date>` is version 1. Upgrades of a PARTIAL report go to
+  `report:<date>:v<n>` + `report:inputs:<date>:<inputs_hash>` (SET NX) and `report:versions:<date>` (ZSET, append-only).
+  A complete version is never superseded. See "2026-10-06: report_v3.1" below.
 - Closing a position appends `ev:<id>:close` (SET NX). Touches (SL/T1/T2) are `ev:<id>:touch_*` from FINAL bars after the fill.
 - The server sets the entry itself (fresh Yahoo quote). If the client's price differs by more than max(1%, ½·ATR%), the response is 409 `quote_moved`.
 - Scores come from FINAL closes only (fetched on a later IST day). Gaps over 15% or adjclose-ratio jumps → `split_flag`, which is excluded.
@@ -96,3 +100,78 @@ Findings 2026-09-25 (report_v1: 6 in Top 10, 29 UNKNOWN):
   day, otherwise the next trading session. New `due_session` (latest session whose report must already exist).
   `stale = report.for_session < due_session`.
 - Compare old and new levels on the same inputs: `scripts/report-diagnose.ts <session>` prints an "R:R effect" block.
+
+## 2026-10-06: report_v3.1 — partial reports + upgrades, official-file fill, stale labels
+Trigger: the 2026-10-06 report (based on the 5 Oct close) had no 5 Oct Yahoo bar for all 4 India indices
+(last bar 1 Oct) and null 5 Oct rows for 15 stocks (KOTAKBANK, MARUTI, NTPC, BAJAJ-AUTO, …). It was stored
+`complete` (report_v2 rules: data holes were not "partial"), Kotak dropped out of the Top 10 and the market
+overview showed 1 Oct index numbers without saying so. That stored report stays as is (write-once, complete).
+
+**Method** `report_v3.1|risk_v3|atr_piecewise_T1_T2_v2` — levels / gates unchanged from v3. Stored v1/v2/v3
+reports re-verify with their own rules (no v3.1 fields are added to them; `dataGapRules(method)`).
+
+**1. Partial = any missing based_on_close bar.** After the official-file fill, a stock or India index without a
+bar for `based_on_close` (Yahoo null row, missing row, or fetch failure) makes the report `partial`, with
+`incomplete.missing_bars[]` (symbol, kind stock/index, reason, last bar date) and `incomplete.note`. Permanent
+holes (404, short history) stay UNKNOWN without making it partial.
+
+**2. Versions / upgrades (write-once applies to COMPLETE reports).**
+- The first run always stores v1 (`report:<date>`), complete or partial (the 06:30 cron no longer skips partials).
+- A later run on the same IST day, when the newest version is partial: re-fetch everything, rebuild, and store
+  `report:<date>:v<n+1>` only if it is complete or has fewer missing bars (else `upgrade_no_improvement`).
+  Each version has its own inputs (`report:inputs:<date>:<inputs_hash>`), `inputs_hash`, `report_hash`,
+  `version`, `supersedes {key, version, status, report_hash, inputs_hash, missing}` and `version_note`.
+  Max 6 versions. `putReportUpgrade` refuses if the newest version is complete (`base_complete`).
+- `/api/report/latest` and `/api/report/<date>` serve the newest version, plus `report_version` and `versions[]`
+  (audit list). `/api/report/<date>?version=1` returns a specific stored version (immutable cache).
+  Partial reports are served with a short CDN life (s-maxage=60) so an upgrade shows up quickly.
+- `/latest` self-heal never upgrades (readers are never blocked on a rebuild); it only builds a missing v1.
+
+**When the retry runs (IST, trading days):**
+| Time | Who | Does |
+|---|---|---|
+| 06:30–07:29 | Vercel cron `/api/cron/premarket-report` | marks + scoring, build + store v1 (complete or partial) |
+| 07:45–08:44 | Vercel cron `/api/cron/premarket-retry` (new, `15 2 * * 1-5`) | if partial → re-fetch, store v2 if better; noop if complete |
+| 07:47 (+GitHub delay, often hours) | GHA `cron-backup.yml` → `/api/cron/premarket-report?source=gha…` | same upgrade logic (no workflow change needed) |
+| 16:30–17:29 | Vercel cron `/api/cron/eod-mark` | provisional marks, then (if ≥ 200 s left) one upgrade try of today's report if still partial; never builds v1, never scores. Versions built after 09:15 say "(after the session opened)" in `version_note`. |
+| 18:07 (+delay) | GHA eod backup | same as eod-mark (retry runs even when marks were already done) |
+
+**3. Official-file fill (free, read-only, `src/lib/bhavcopy.ts`).** Only for a missing/null based_on_close bar,
+only from the file for exactly that date, never intraday or a later date:
+- stocks: NSE `sec_bhavdata_full_DDMMYYYY.csv` → NSE UDiFF `BhavCopy_NSE_CM_0_0_0_YYYYMMDD_F_0000.csv.zip` →
+  BSE UDiFF `BhavCopy_BSE_CM_0_0_0_YYYYMMDD_F_0000.CSV`; tag `close_source: "nse_bhavcopy" | "bse_bhavcopy"` on the bar
+  (inputs), the pick (`close_source`, `close_label`), `report.data_fills[]` and `report.close_sources` counts.
+  Guards: Yahoo's last bar must be the previous trading day (no wider gap); the row's own date must equal
+  based_on_close; OHLC consistent; the file's previous close must match Yahoo's last close within 1% (else
+  "corporate action?" → not filled). NSE series EQ preferred (then BE/BZ).
+- indices: NSE `ind_close_all_DDMMYYYY.csv` for Nifty 50, Nifty Bank, India VIX (`close_source: "nse_index_close"`,
+  prev close = close − points change, checked against Yahoo's previous bar within 0.5%). Sensex has no NSE source.
+- Fails soft: a 403 / timeout / missing row leaves the bar UNKNOWN; the UNKNOWN reason lists what was tried
+  (e.g. `…; bhavcopy: nse_full:http_403, nse_udiff:http_403, bse_udiff:http_403`). `report.close_fallback.files[]`
+  records every file fetched. Kill switch: env `BHAVCOPY_FALLBACK=0`.
+- Reachability from the box on 2026-10-06 (browser UA + Referer; also without Referer): all **200** —
+  NSE sec_bhavdata_full (5 Oct, 3,524 rows), NSE UDiFF zip (5 Oct and 1 Oct), NSE ind_close_all (5 Oct, 1 Oct),
+  BSE UDiFF CSV (5 Oct). The files had the rows Yahoo lacked (KOTAKBANK 416.00, MARUTI 11532.00, NTPC 321.80,
+  Nifty 50 22555.75 on 5 Oct). The earlier "403 from cloud IPs" note (2026-09-25) applied to other NSE endpoints.
+  Not testable from Vercel directly: check `close_fallback.files[]` in the first stored v3.1 report that needed it.
+- Live check 2026-10-06 09:08 IST (`report-diagnose.ts 2026-10-06`, no Redis writes): Yahoo still served null 5 Oct rows
+  for the same 15 stocks; all 15 were filled from `sec_bhavdata_full_05102026.csv` (close_sources yahoo 61 / nse_bhavcopy 15),
+  status complete. By then Yahoo had the 5 Oct index bars. Note: under risk_v3, KOTAKBANK (416) is a hold anyway
+  (swing-high resistance 420.5 caps T1 at 0.5R), so it would not be in the Top 10 even with the bar.
+
+**4. Stale labels.** v3.1 index rows older than based_on_close get `stale: true` and
+`as_of_label: "Index data as of 1 Oct (Yahoo had no 5 Oct bar)"`, plus `market_overview.data_as_of_note`;
+filled rows get `"NSE official index close for 5 Oct (Yahoo had no 5 Oct bar)"`. The headline says
+"Nifty 50 data as of 1 Oct (…): last close X — not a 5 Oct number" instead of "closed at". The UI computes the
+same label at render time for older stored reports. Stocks with an older bar are never ranked (UNKNOWN).
+
+**Tests** (lib suite, mocked Yahoo null rows + mocked official files, small universe):
+P3.1 partial → `upgrade_no_improvement` → `upgraded_v2_complete` (v1 kept, both verify from stored inputs, /latest serves v2);
+P3.2 complete never overwritten (re-run noop, `putReportUpgrade` → `base_complete`, `putReportOnce` false, eod retry noop);
+P3.3 stale index label + headline; P3.4 bhavcopy/index-close fill (exact date, tagged; wrong-date row and prev-close
+mismatch rejected); P1.8e stored report_v3 still verifies. HTTP suite: P3.1a versions envelope, P3.1b partial lists
+missing bars, P3.1c `?version=1`, P3.3a stale index rows labelled (v3.1 reports).
+
+Ops check after a gap day: `GET /api/report/latest` → `report_version`, `versions[]`, `report.incomplete`,
+`report.data_fills`, `report.close_fallback`. Manual retry (same day): `curl -H "Authorization: Bearer $CRON_SECRET"
+https://nse-stock-lab.vercel.app/api/cron/premarket-retry`.

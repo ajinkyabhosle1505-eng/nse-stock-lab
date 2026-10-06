@@ -29,6 +29,22 @@ export interface ReportPick {
   t1_basis?: string | null;
   t2_basis?: string | null;
   funda_status?: "verified" | "UNKNOWN (not verified)";
+  /** report_v3.1+: only when the bar came from an official EOD file (Yahoo had none) */
+  close_source?: string;
+  close_label?: string;
+}
+
+export interface IndexRow {
+  symbol: string;
+  name: string;
+  close: number | U;
+  prev_close: number | U;
+  chg_pct: number | U;
+  bar_date: string | null;
+  /** report_v3.1+ */
+  close_source?: string;
+  stale?: boolean;
+  as_of_label?: string;
 }
 
 export interface RrCapped {
@@ -70,9 +86,23 @@ export interface ReportV1 {
   lanes: Record<Lane, LaneStat>;
   unknowns: { ticker: string; lane: Lane; reason: string }[];
   timing: { elapsed_ms: number; scan_deadline_ms: number };
+  /** ---- report_v3.1+ (absent on older stored reports) ---- */
+  version?: number;
+  supersedes?: { key: string; version: number; status: "complete" | "partial"; report_hash: string; inputs_hash: string; missing: number } | null;
+  incomplete?: {
+    missing_bars: { symbol: string; kind: "stock" | "index"; reason: string; last_bar_date?: string | null }[];
+    n_stocks: number;
+    n_indices: number;
+    note: string;
+  } | null;
+  data_fills?: { symbol: string; kind: "stock" | "index"; date: string; close_source: string; close: number }[];
+  close_sources?: Record<string, number>;
+  close_fallback?: { files: { url: string; ok: boolean; error?: string; rows?: number }[] } | null;
+  version_note?: string;
   sections: {
     market_overview: {
-      indices: { symbol: string; name: string; close: number | U; prev_close: number | U; chg_pct: number | U; bar_date: string | null }[];
+      indices: IndexRow[];
+      data_as_of_note?: string;
       breadth: { scanned: number; above_dma50: number; hh_hl: number; buy: number; hold: number; avoid: number; unknown: number };
       global_cues: { symbol: string; name: string; close: number | U; chg_pct: number | U; as_of: string }[];
       headlines: { headline: string; source: string | null; link: string | null; pubDate: string | null; confirmation_status: string }[];

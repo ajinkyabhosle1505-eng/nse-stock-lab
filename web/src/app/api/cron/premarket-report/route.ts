@@ -10,9 +10,13 @@ export const maxDuration = 300;
 
 /**
  * Vercel Cron `0 1 * * 1-5` (06:30–07:29 IST) + GitHub Actions backup (07:47 IST).
- * Bearer CRON_SECRET. Idempotent: holiday_skip on NSE holidays, noop if today's
- * run is complete, 409 if another run holds the lease. Also FINAL marks + scoring.
- * ?source=gha&finalize_if_partial=1 stores a partial report instead of waiting.
+ * Bearer CRON_SECRET. Idempotent: holiday_skip on NSE holidays, noop once today's
+ * report is COMPLETE, 409 if another run holds the lease. Also FINAL marks + scoring
+ * (once per day).
+ * report_v3.1: the first run always stores v1 (complete or partial). If the stored
+ * report is partial, a later call the same IST day (e.g. the 07:47 GHA backup)
+ * re-fetches and stores v<n+1> when it is complete or has fewer missing bars.
+ * finalize_if_partial=1 is accepted for compatibility (partials are always stored now).
  */
 async function handle(req: NextRequest) {
   const auth = checkCronAuth(req.headers.get("authorization"));
@@ -31,7 +35,9 @@ async function handle(req: NextRequest) {
       ...(res.locked ? { locked: true } : {}),
       ...(res.noop ? { noop: true } : {}),
       ...(res.error ? { error: res.error } : {}),
-      report: r ? { key: r.key, status: r.status, based_on_close: r.based_on_close, report_hash: r.report_hash, top10: r.sections.top10_under_1000.items.length, unknowns: r.unknowns.length } : null,
+      report: r
+        ? { key: r.key, version: r.version ?? 1, status: r.status, based_on_close: r.based_on_close, report_hash: r.report_hash, inputs_hash: r.inputs_hash, top10: r.sections.top10_under_1000.items.length, unknowns: r.unknowns.length, missing_bars: r.incomplete?.missing_bars.map((m) => m.symbol) ?? null, data_fills: r.data_fills?.map((f) => `${f.symbol}:${f.close_source}`) ?? null }
+        : null,
       detail: res.detail ?? null,
       sebi_banner: SEBI_BANNER,
     },

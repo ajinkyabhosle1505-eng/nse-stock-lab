@@ -16,7 +16,8 @@
  * report can be recomputed from inputs → same report_hash.
  */
 
-import { fetchYahooChartX, type ChartResult, type YahooHistory } from "./yahoo";
+import { fetchYahooChartX, type ChartResult, type DailyBarX, type YahooHistory } from "./yahoo";
+import { BhavFetcher, type CloseSource } from "./bhavcopy";
 import { computeTech } from "./tech";
 import { fetchLiveFunda } from "./funda";
 import { fetchLiveNews, fetchMarketHeadlines, type NewsItem } from "./news";
@@ -35,6 +36,7 @@ import {
   prevTradingDay,
 } from "./marketCalendar";
 import { canonicalJSON, sha256hex } from "./hash";
+import { barAsOf, indexAsOf, shortDay } from "./staleLabel";
 import type { ForecastMethod, TechFields, TechLane, Verdict } from "./types";
 import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
 
@@ -52,7 +54,26 @@ import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
  * levels). Top 10 lists verified-funda names before funda_unknown ones.
  * Stored v1/v2 reports re-verify with their own level rules (levelPolicy).
  */
-export const METHOD_VERSION = "report_v3|risk_v3|atr_piecewise_T1_T2_v2";
+/**
+ * report_v3.1 (2026-10-06): data-gap handling. A missing / null based_on_close bar
+ * (stock OR India index) makes the report `partial` with `incomplete.missing_bars`
+ * listed; a later run the same day may store an upgraded version (report:<d>:v<n>,
+ * earlier versions kept). A missing Yahoo bar may be filled ONLY from the official
+ * EOD file for that exact date (NSE/BSE bhavcopy, NSE index closes), tagged
+ * `close_source`. Index numbers older than based_on_close carry an "as of" label.
+ * Levels / gates are unchanged from v3 (same risk_v3, same paper method).
+ */
+export const METHOD_VERSION = "report_v3.1|risk_v3|atr_piecewise_T1_T2_v2";
+/** [major, minor] of a report method string ("report_v3.1|…" → [3, 1]). */
+export function reportVersionOf(method: string = METHOD_VERSION): [number, number] {
+  const m = method.match(/^report_v(\d+)(?:\.(\d+))?\|/);
+  return m ? [Number(m[1]), Number(m[2] || 0)] : [0, 0];
+}
+/** report_v3.1+: data-gap rules (missing bar → partial, close_source, stale labels, versions). */
+export function dataGapRules(method: string = METHOD_VERSION): boolean {
+  const [a, b] = reportVersionOf(method);
+  return a > 3 || (a === 3 && b >= 1);
+}
 export function fundaGapPolicy(method: string = METHOD_VERSION): "avoid" | "unknown" {
   return method.startsWith("report_v1|") ? "avoid" : "unknown";
 }
@@ -106,7 +127,11 @@ export interface SymbolInput {
   ticker: string;
   yahoo_symbol: string;
   sector: string;
-  bar: { date: string; open: number; high: number; low: number; close: number; adjclose: number | null; volume: number } | null;
+  bar: {
+    date: string; open: number; high: number; low: number; close: number; adjclose: number | null; volume: number;
+    /** report_v3.1: set only when the based_on_close bar came from an official EOD file (Yahoo had none) */
+    close_source?: CloseSource;
+  } | null;
   tech: Omit<TechFields, "closes_30d"> | null;
   funda: { fields: Record<string, unknown>; sources: string[]; note: string } | null;
   news: { fields: Record<string, unknown>; sources: string[]; note: string } | null;
@@ -117,7 +142,11 @@ export interface ReportInputs {
   based_on_close: string;
   universe: string[];
   symbols: Record<string, SymbolInput>;
-  indices: { symbol: string; name: string; close: number | "UNKNOWN"; prev_close: number | "UNKNOWN"; chg_pct: number | "UNKNOWN"; bar_date: string | null }[];
+  indices: {
+    symbol: string; name: string; close: number | "UNKNOWN"; prev_close: number | "UNKNOWN"; chg_pct: number | "UNKNOWN"; bar_date: string | null;
+    /** report_v3.1: "nse_index_close" when Yahoo had no based_on_close bar and NSE's official close file did */
+    close_source?: CloseSource;
+  }[];
   global_cues: { symbol: string; name: string; close: number | "UNKNOWN"; chg_pct: number | "UNKNOWN"; as_of: string }[];
   headlines: { headline: string; source: string | null; link: string | null; pubDate: string | null; confirmation_status: string }[];
   headlines_as_of: string;
@@ -190,6 +219,7 @@ export function buildSections(
     .map(({ v }) => v);
   const eligible = buys.length;
   const v3 = levelPolicy(method) === "rr_floor_v3";
+  const gapRules = dataGapRules(method);
   const top = diversifyPicks(
     [...buys].sort((a, b) => diversifiedPickScore(b) - diversifiedPickScore(a)),
     BUDGET_INR,
@@ -226,6 +256,13 @@ export function buildSections(
             t1_basis: v.t1_basis ?? null,
             t2_basis: v.t2_basis ?? null,
             funda_status: v.risk_flags?.includes("funda_unknown") ? ("UNKNOWN (not verified)" as const) : ("verified" as const),
+          }
+        : {}),
+      // v3.1: bar filled from an official EOD file (Yahoo had none) → say so on the pick
+      ...(gapRules && inp.symbols[v.ticker]?.bar?.close_source
+        ? {
+            close_source: inp.symbols[v.ticker].bar!.close_source,
+            close_label: barAsOf(inp.symbols[v.ticker].bar!.date, inp.based_on_close, inp.symbols[v.ticker].bar!.close_source) ?? undefined,
           }
         : {}),
     };
@@ -350,16 +387,38 @@ export function buildSections(
   const diff = (a: string[], b: string[]) => a.filter((x) => !b.includes(x));
 
   const nifty = inp.indices.find((i) => i.symbol === "^NSEI");
-  const niftyTxt =
+  const chgTxt = (n: { chg_pct: number | "UNKNOWN" }) => (typeof n.chg_pct === "number" ? ` (${n.chg_pct >= 0 ? "+" : ""}${n.chg_pct}%)` : "");
+  let niftyTxt =
     nifty && typeof nifty.close === "number"
-      ? `Nifty 50 closed at ${nifty.close}${typeof nifty.chg_pct === "number" ? ` (${nifty.chg_pct >= 0 ? "+" : ""}${nifty.chg_pct}%)` : ""} on ${nifty.bar_date}`
+      ? `Nifty 50 closed at ${nifty.close}${chgTxt(nifty)} on ${nifty.bar_date}`
       : "Nifty 50 close UNKNOWN";
+  // v3.1: never present an older index bar as the based_on_close number
+  const indices = gapRules
+    ? inp.indices.map((ix) => {
+        const lab = indexAsOf(ix, inp.based_on_close);
+        return lab ? { ...ix, stale: lab.stale, as_of_label: lab.label } : ix;
+      })
+    : inp.indices;
+  const staleIdx = gapRules ? indices.filter((ix) => "stale" in ix && ix.stale) : [];
+  if (gapRules && nifty) {
+    const lab = indexAsOf(nifty, inp.based_on_close);
+    if (lab?.stale && typeof nifty.close === "number") niftyTxt = `Nifty 50 ${lab.label.replace(/^Index data /, "data ")}: last close ${nifty.close}${chgTxt(nifty)} — not a ${shortDay(inp.based_on_close)} number`;
+    else if (lab?.stale) niftyTxt = `Nifty 50 close for ${shortDay(inp.based_on_close)} UNKNOWN`;
+    else if (lab && typeof nifty.close === "number") niftyTxt = `Nifty 50 closed at ${nifty.close}${chgTxt(nifty)} on ${nifty.bar_date} (${lab.label})`;
+  }
 
   return {
     unknownsFromData,
     sections: {
       market_overview: {
-        indices: inp.indices,
+        indices,
+        ...(staleIdx.length
+          ? {
+              data_as_of_note: `Not ${shortDay(inp.based_on_close)} numbers: ${staleIdx
+                .map((ix) => `${ix.name} ${ix.bar_date ? `as of ${shortDay(ix.bar_date)}` : "UNKNOWN"}`)
+                .join(", ")} — Yahoo had no ${shortDay(inp.based_on_close)} bar and no official close file filled it.`,
+            }
+          : {}),
         breadth: { scanned: scannedN, above_dma50: above50, hh_hl: hhhl, buy: count("buy"), hold: count("hold"), avoid: count("avoid"), unknown: scannedN - ok },
         global_cues: inp.global_cues,
         headlines: inp.headlines,
@@ -402,6 +461,8 @@ const INDEX_LIST = [
   { symbol: "^NSEBANK", name: "Nifty Bank" },
   { symbol: "^INDIAVIX", name: "India VIX" },
 ];
+/** NSE ind_close_all names for the India indices NSE publishes (Sensex is BSE's: no NSE fallback). */
+const NSE_INDEX_NAME: Record<string, string> = { "^NSEI": "Nifty 50", "^NSEBANK": "Nifty Bank", "^INDIAVIX": "India VIX" };
 const GLOBAL_LIST = [
   { symbol: "^GSPC", name: "S&P 500" },
   { symbol: "^IXIC", name: "Nasdaq Composite" },
@@ -412,6 +473,78 @@ export interface GenerateOpts {
   prev?: ReportV1 | null;
   deadlineMs?: number; // stop scheduling new symbols after this many ms (default 210 s)
   universe?: string[];
+  /** report_v3.1 versioning: 1 = first build for the session; n > 1 = upgrade of a partial report */
+  version?: number;
+  supersedes?: ReportSupersedes | null;
+}
+
+export interface ReportSupersedes {
+  key: string;
+  version: number;
+  status: "complete" | "partial";
+  report_hash: string;
+  inputs_hash: string;
+  missing: number;
+}
+
+export interface MissingBar {
+  symbol: string;
+  kind: "stock" | "index";
+  reason: string;
+  last_bar_date?: string | null;
+}
+
+/**
+ * Stocks / India indices without a usable based_on_close bar (pure: inputs + unknowns).
+ * Counted: Yahoo null / missing row and fetch failures. Not counted: permanent data holes
+ * (404, short history), which stay UNKNOWN without making the report partial.
+ */
+export function missingBars(inputs: ReportInputs, unknowns: ReportV1["unknowns"]): MissingBar[] {
+  const out: MissingBar[] = [];
+  for (const u of unknowns) {
+    if (u.lane === "tech" && /^(yahoo_null_bar|yahoo_missing_bar|yahoo_429|http_5xx|timeout|network|deadline_not_scanned|circuit_breaker_429)/.test(u.reason)) {
+      out.push({ symbol: u.ticker, kind: "stock", reason: u.reason });
+    }
+  }
+  for (const ix of inputs.indices) {
+    if (ix.bar_date !== inputs.based_on_close) {
+      const u = unknowns.find((x) => x.lane === "index" && x.ticker === ix.symbol);
+      out.push({ symbol: ix.symbol, kind: "index", reason: u?.reason || `no bar for ${inputs.based_on_close}`, last_bar_date: ix.bar_date });
+    }
+  }
+  return out.sort((a, b) => a.kind.localeCompare(b.kind) || a.symbol.localeCompare(b.symbol));
+}
+
+/**
+ * Fill ONE missing based_on_close bar from the official EOD file for exactly that date.
+ * Guards: Yahoo's last usable bar must be the previous trading day (no wider gap), the
+ * file row's own date must equal based_on_close, OHLC must be consistent, and the file's
+ * previous close must match Yahoo's last close within 1% (else: corporate action /
+ * adjustment mismatch → not filled).
+ */
+async function fillFromBhav(
+  ticker: string,
+  bars: DailyBarX[],
+  basedOnClose: string,
+  bhav: BhavFetcher
+): Promise<{ ok: true; bar: DailyBarX; source: CloseSource } | { ok: false; why: string }> {
+  const last = bars[bars.length - 1];
+  if (!last) return { ok: false, why: "bhavcopy: no prior Yahoo bars" };
+  if (last.date !== prevTradingDay(basedOnClose)) return { ok: false, why: `bhavcopy: not used (gap before ${basedOnClose}, last ${last.date})` };
+  const look = await bhav.equity(ticker, basedOnClose);
+  if (!look.ok || !look.row || !look.source) return { ok: false, why: `bhavcopy: ${look.tried.join(", ") || "unavailable"}` };
+  const b = look.row;
+  if (![b.open, b.high, b.low, b.close].every((x) => Number.isFinite(x) && x > 0) || b.low > Math.min(b.open, b.close) || b.high < Math.max(b.open, b.close)) {
+    return { ok: false, why: `bhavcopy: ${look.source} row inconsistent` };
+  }
+  if (b.prev_close != null && Math.abs(b.prev_close - last.close) / last.close > 0.01) {
+    return { ok: false, why: `bhavcopy: ${look.source} prev_close ${b.prev_close} ≠ Yahoo ${r2(last.close)} (corporate action?) — not filled` };
+  }
+  return {
+    ok: true,
+    source: look.source,
+    bar: { date: basedOnClose, ts: Math.floor(Date.parse(`${basedOnClose}T15:30:00+05:30`) / 1000), open: b.open, high: b.high, low: b.low, close: b.close, adjclose: null, volume: b.volume },
+  };
 }
 
 export interface GenerateResult {
@@ -427,11 +560,12 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
   const based_on_close = prevTradingDay(for_session);
   const universe = (opts.universe || reportUniverse()).slice().sort();
   const unknowns: { ticker: string; lane: Lane; reason: string }[] = [];
+  const bhav = new BhavFetcher();
   const lanes: Record<Lane, LaneStat> = {
-    tech: { source: "Yahoo v8 chart 1d (1y)", first_fetch_at: null, last_fetch_at: null, ok: 0, failed: 0 },
+    tech: { source: "Yahoo v8 chart 1d (1y); a missing based_on_close bar is filled only from NSE/BSE bhavcopy for that date", first_fetch_at: null, last_fetch_at: null, ok: 0, failed: 0 },
     funda: { source: "screener.in HTML (Yahoo quoteSummary skipped in cron)", first_fetch_at: null, last_fetch_at: null, ok: 0, failed: 0, skipped: 0 },
     news: { source: "Yahoo Finance RSS / Google News RSS", first_fetch_at: null, last_fetch_at: null, ok: 0, failed: 0, skipped: 0 },
-    index: { source: "Yahoo v8 chart 1d", first_fetch_at: null, last_fetch_at: null, ok: 0, failed: 0 },
+    index: { source: "Yahoo v8 chart 1d; NSE ind_close_all for a missing based_on_close bar", first_fetch_at: null, last_fetch_at: null, ok: 0, failed: 0 },
   };
   const touch = (l: Lane) => {
     const now = new Date().toISOString();
@@ -446,16 +580,32 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
       touch("index");
       const isIndia = INDEX_LIST.some((x) => x.symbol === ix.symbol);
       const bars = isIndia ? r.bars.filter((b) => b.date <= based_on_close) : r.bars;
+      const last = bars[bars.length - 1];
+      let fallbackNote = "";
+      // v3.1: Yahoo has no based_on_close bar for an India index → NSE's official index close
+      // file for exactly that date (never intraday, never a later date). Fails soft.
+      if (isIndia && (!last || last.date !== based_on_close) && NSE_INDEX_NAME[ix.symbol]) {
+        const f = await bhav.indexClose(NSE_INDEX_NAME[ix.symbol], based_on_close);
+        const row = f.row;
+        if (f.ok && row && row.points_change != null && row.close > 0) {
+          const prev = r2(row.close - row.points_change);
+          const yPrev = last && last.date === prevTradingDay(based_on_close) ? last.close : null;
+          if (prev > 0 && (yPrev == null || Math.abs(prev - yPrev) / yPrev <= 0.005)) {
+            lanes.index.ok++;
+            return { ...ix, isIndia, close: r2(row.close), prev_close: prev, chg_pct: r2(((row.close - prev) / prev) * 100), bar_date: based_on_close, close_source: "nse_index_close" as CloseSource };
+          }
+          fallbackNote = `; nse_index_close: prev_close_mismatch (file ${prev} vs Yahoo ${yPrev})`;
+        } else fallbackNote = `; ${f.tried.join(", ") || "nse_index_close: unavailable"}`;
+      }
       if (!r.ok || bars.length < 2) {
         lanes.index.failed++;
-        unknowns.push({ ticker: ix.symbol, lane: "index", reason: r.error || "short_history" });
+        unknowns.push({ ticker: ix.symbol, lane: "index", reason: (r.error || "short_history") + fallbackNote });
         return { ...ix, isIndia, close: "UNKNOWN" as const, prev_close: "UNKNOWN" as const, chg_pct: "UNKNOWN" as const, bar_date: null };
       }
       lanes.index.ok++;
-      const last = bars[bars.length - 1];
       const prevB = bars[bars.length - 2];
       if (isIndia && last.date !== based_on_close) {
-        unknowns.push({ ticker: ix.symbol, lane: "index", reason: `no bar for ${based_on_close} (last ${last.date})` });
+        unknowns.push({ ticker: ix.symbol, lane: "index", reason: `no bar for ${based_on_close} (last ${last.date})${fallbackNote}` });
       }
       return { ...ix, isIndia, close: r2(last.close), prev_close: r2(prevB.close), chg_pct: r2(((last.close - prevB.close) / prevB.close) * 100), bar_date: last.date };
     })
@@ -495,7 +645,16 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
       symbols[t] = base;
       return;
     }
-    const bars = r.bars.filter((b) => b.date <= based_on_close);
+    let bars = r.bars.filter((b) => b.date <= based_on_close);
+    let closeSource: CloseSource | undefined;
+    let fillWhy = "";
+    if (!bars.length || bars[bars.length - 1].date !== based_on_close) {
+      const fill = await fillFromBhav(t, bars, based_on_close, bhav);
+      if (fill.ok) {
+        bars = [...bars, fill.bar];
+        closeSource = fill.source;
+      } else fillWhy = fill.why;
+    }
     const last = bars[bars.length - 1];
     if (!last || last.date !== based_on_close) {
       lanes.tech.failed++;
@@ -503,9 +662,9 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
       unknowns.push({
         ticker: t,
         lane: "tech",
-        reason: nullRow
+        reason: (nullRow
           ? `yahoo_null_bar: Yahoo returned the ${based_on_close} row with null OHLC${last ? ` (last usable ${last.date})` : ""} — not filled`
-          : `yahoo_missing_bar: no settled bar for ${based_on_close}${last ? ` (last ${last.date})` : ""}`,
+          : `yahoo_missing_bar: no settled bar for ${based_on_close}${last ? ` (last ${last.date})` : ""}`) + (fillWhy ? `; ${fillWhy}` : ""),
       });
       symbols[t] = base;
       return;
@@ -522,7 +681,7 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
     lanes.tech.ok++;
     symbols[t] = {
       ...base,
-      bar: { date: last.date, open: r2(last.open), high: r2(last.high), low: r2(last.low), close: r2(last.close), adjclose: last.adjclose != null ? r2(last.adjclose) : null, volume: last.volume },
+      bar: { date: last.date, open: r2(last.open), high: r2(last.high), low: r2(last.low), close: r2(last.close), adjclose: last.adjclose != null ? r2(last.adjclose) : null, volume: last.volume, ...(closeSource ? { close_source: closeSource } : {}) },
       tech: techNoCloses,
     };
   });
@@ -596,20 +755,25 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
     based_on_close,
     universe,
     symbols,
-    indices: idx.filter((x) => x.isIndia).map(({ symbol, name, close, prev_close, chg_pct, bar_date }) => ({ symbol, name, close, prev_close, chg_pct, bar_date })),
+    indices: idx.filter((x) => x.isIndia).map((x) => ({ symbol: x.symbol, name: x.name, close: x.close, prev_close: x.prev_close, chg_pct: x.chg_pct, bar_date: x.bar_date, ...("close_source" in x && x.close_source ? { close_source: x.close_source } : {}) })),
     global_cues: idx.filter((x) => !x.isIndia).map(({ symbol, name, close, chg_pct, bar_date }) => ({ symbol, name, close, chg_pct, as_of: bar_date ? `US close ${bar_date}` : "UNKNOWN" })),
     headlines: (heads.items || []).map((h) => ({ headline: h.headline, source: h.source ?? null, link: h.link ?? null, pubDate: h.pubDate ?? null, confirmation_status: h.confirmation_status })),
     headlines_as_of: new Date().toISOString(),
   };
 
+  const fetchPartial = notScanned.length > 0 || breaker || unknowns.some((u) => u.lane === "tech" && /^(yahoo_429|http_5xx|timeout|network|not_scanned)/.test(u.reason));
   const report = assembleReport(inputs, opts.prev ?? null, {
     lanes,
     unknowns,
-    // partial = could not FETCH (429/5xx/timeout/network/not scanned); Yahoo data holes (null bar, short history, 404) are UNKNOWN but not partial
-    partial: notScanned.length > 0 || breaker || unknowns.some((u) => u.lane === "tech" && /^(yahoo_429|http_5xx|timeout|network|not_scanned)/.test(u.reason)),
+    // partial = could not FETCH (429/5xx/timeout/network/not scanned) or (v3.1) any stock / India index
+    // without a based_on_close bar after the official-file fill. Permanent holes (404, short history) are UNKNOWN only.
+    partial: fetchPartial || (dataGapRules() && missingBars(inputs, unknowns).length > 0),
     generated_at: new Date().toISOString(),
     elapsed_ms: Date.now() - t0,
     scan_deadline_ms: scheduleCutoff - t0,
+    version: opts.version ?? 1,
+    supersedes: opts.supersedes ?? null,
+    close_fallback: bhav.log.length ? { files: bhav.log } : null,
   });
   return { report, inputs };
 }
@@ -623,15 +787,30 @@ export function inputsHash(inputs: ReportInputs, method: string = METHOD_VERSION
 export function assembleReport(
   inputs: ReportInputs,
   prev: ReportV1 | null,
-  meta: { lanes: Record<Lane, LaneStat>; unknowns: ReportV1["unknowns"]; partial: boolean; generated_at: string; elapsed_ms: number; scan_deadline_ms: number; method_version?: string }
+  meta: {
+    lanes: Record<Lane, LaneStat>;
+    unknowns: ReportV1["unknowns"];
+    partial: boolean;
+    generated_at: string;
+    elapsed_ms: number;
+    scan_deadline_ms: number;
+    method_version?: string;
+    /** v3.1 only (ignored for older methods so stored reports keep their hash) */
+    version?: number;
+    supersedes?: ReportSupersedes | null;
+    close_fallback?: ReportV1["close_fallback"] | null;
+  }
 ): ReportV1 {
   const method = meta.method_version || METHOD_VERSION;
+  const gapRules = dataGapRules(method);
   const { sections, unknownsFromData } = buildSections(inputs, prev, method);
   const allUnknowns = [...meta.unknowns];
   for (const u of unknownsFromData) if (!allUnknowns.some((x) => x.ticker === u.ticker && x.lane === u.lane)) allUnknowns.push(u);
+  const version = gapRules ? Math.max(1, meta.version ?? 1) : 1;
+  const gap = gapRules ? gapFields(inputs, meta.unknowns, meta.partial, version, meta.supersedes ?? null, meta.close_fallback ?? null, meta.generated_at) : null;
   const body: Omit<ReportV1, "report_hash"> = {
     schema: "stock-lab.report.v1",
-    key: `report:${inputs.for_session}`,
+    key: reportKey(inputs.for_session, version),
     for_session: inputs.for_session,
     based_on_close: inputs.based_on_close,
     label: `Based on close of ${fmtDayLabel(inputs.based_on_close)} · For session ${fmtDayLabel(inputs.for_session)}`,
@@ -653,14 +832,85 @@ export function assembleReport(
       ...(fundaGapPolicy(method) === "unknown"
         ? ["Fundamentals missing (Screener unavailable) are shown as UNKNOWN, never estimated; such names are judged on the tape with confidence capped one notch (flag funda_unknown)."]
         : []),
+      ...(gapRules
+        ? [
+            "A missing Yahoo bar for the based-on close is filled only from the official end-of-day file for that exact date (NSE/BSE bhavcopy, NSE index closes) and tagged close_source; otherwise it stays UNKNOWN and the report is marked partial. Index numbers older than that close carry an 'as of' label.",
+          ]
+        : []),
     ],
     calendar: { source: CALENDAR_SOURCE, holiday_file: HOLIDAY_FILE, ...(calendarVerified(inputs.for_session) ? {} : { unverified: true }) },
     lanes: meta.lanes,
     unknowns: allUnknowns.sort((a, b) => a.lane.localeCompare(b.lane) || a.ticker.localeCompare(b.ticker)),
     timing: { elapsed_ms: meta.elapsed_ms, scan_deadline_ms: meta.scan_deadline_ms },
+    ...(gap || {}),
     sections,
   };
   return { ...body, report_hash: reportHash(body) };
+}
+
+/** Redis key of a report version: v1 keeps the legacy key, upgrades get `:v<n>`. */
+export function reportKey(forSession: string, version = 1): string {
+  return version > 1 ? `report:${forSession}:v${version}` : `report:${forSession}`;
+}
+
+/** Missing-bar count used to decide whether an upgrade improved on a stored version. */
+export function missingCountOf(r: ReportV1): number {
+  if (r.incomplete) return r.incomplete.missing_bars.length;
+  if (r.status === "complete" && dataGapRules(r.method_version)) return 0;
+  return r.unknowns.filter((u) => u.lane === "index" || (u.lane === "tech" && !/^(yahoo_404|short_history|empty|http_other)/.test(u.reason))).length;
+}
+
+function gapFields(
+  inputs: ReportInputs,
+  unknowns: ReportV1["unknowns"],
+  partial: boolean,
+  version: number,
+  supersedes: ReportSupersedes | null,
+  closeFallback: ReportV1["close_fallback"] | null,
+  generatedAt: string
+): Pick<ReportV1, "version" | "supersedes" | "incomplete" | "data_fills" | "close_sources" | "close_fallback" | "version_note"> {
+  const missing = missingBars(inputs, unknowns);
+  const fills: NonNullable<ReportV1["data_fills"]> = [];
+  const sources: Record<string, number> = {};
+  for (const t of [...inputs.universe].sort()) {
+    const b = inputs.symbols[t]?.bar;
+    if (!b) continue;
+    const src = b.close_source || "yahoo";
+    sources[src] = (sources[src] || 0) + 1;
+    if (b.close_source) fills.push({ symbol: t, kind: "stock", date: b.date, close_source: b.close_source, close: b.close });
+  }
+  for (const ix of inputs.indices) {
+    if (!ix.bar_date) continue;
+    const src = ix.close_source || "yahoo";
+    sources[`index:${src}`] = (sources[`index:${src}`] || 0) + 1;
+    if (ix.close_source && typeof ix.close === "number") fills.push({ symbol: ix.symbol, kind: "index", date: ix.bar_date, close_source: ix.close_source, close: ix.close });
+  }
+  const hm = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: "Asia/Kolkata" }).format(new Date(generatedAt));
+  const afterOpen = Date.parse(generatedAt) >= Date.parse(`${inputs.for_session}T09:15:00+05:30`);
+  const nS = missing.filter((m) => m.kind === "stock").length;
+  const nI = missing.filter((m) => m.kind === "index").length;
+  return {
+    version,
+    supersedes,
+    incomplete:
+      partial || missing.length
+        ? {
+            missing_bars: missing,
+            n_stocks: nS,
+            n_indices: nI,
+            note: missing.length
+              ? `Incomplete: no ${shortDay(inputs.based_on_close)} bar for ${nS} stock${nS === 1 ? "" : "s"} and ${nI} ${nI === 1 ? "index" : "indices"} (Yahoo, and no official close file filled it). Those names are UNKNOWN, not estimated. A retry later the same day may store an upgraded version.`
+              : "Incomplete: some data could not be fetched (see unknowns). A retry later the same day may store an upgraded version.",
+          }
+        : null,
+    data_fills: fills,
+    close_sources: sources,
+    close_fallback: closeFallback ? { files: [...closeFallback.files].sort((a, b) => a.url.localeCompare(b.url)) } : null,
+    version_note:
+      version > 1 && supersedes
+        ? `Version ${version}, built ${hm} IST${afterOpen ? " (after the session opened)" : ""}; replaces v${supersedes.version} (${supersedes.status}, ${supersedes.missing} missing bars, hash ${supersedes.report_hash.slice(0, 12)}), which is kept for audit.`
+        : `Version 1, built ${hm} IST.`,
+  };
 }
 
 export function reportHash(body: Omit<ReportV1, "report_hash"> | ReportV1): string {
@@ -675,6 +925,9 @@ export function reportHash(body: Omit<ReportV1, "report_hash"> | ReportV1): stri
  */
 export function verifyReport(stored: ReportV1, inputs: ReportInputs, prev: ReportV1 | null): { ok: boolean; recomputed_hash: string } {
   const re = assembleReport(inputs, prev, {
+    version: stored.version,
+    supersedes: stored.supersedes ?? null,
+    close_fallback: stored.close_fallback ?? null,
     lanes: stored.lanes,
     unknowns: stored.unknowns,
     partial: stored.status === "partial",

@@ -40,7 +40,10 @@ if (secret) {
   const withAuth = await call("/api/cron/premarket-report", { headers: { Authorization: `Bearer ${secret}` } });
   check("P1.2 cron auth", noAuth.status === 401 && [200, 202].includes(withAuth.status), `no bearer ${noAuth.status}, bearer ${withAuth.status} ${withAuth.json.action}`);
   const again = await call("/api/cron/premarket-report", { headers: { Authorization: `Bearer ${secret}` } });
-  check("P1.3/P2.10 cron replay", again.json.noop === true || again.json.action === "noop" || again.status === 409 || again.json.action === "exists", `${again.status} ${again.json.action}`);
+  // report_v3.1: a replay may legitimately retry a PARTIAL report (upgrade_* / upgraded_v<n>_*), never a complete one
+  const replayOk = again.json.noop === true || again.json.action === "noop" || again.status === 409 || again.json.action === "exists" ||
+    (withAuth.json.report?.status === "partial" && /^(upgrade_no_improvement|upgraded_v\d+_(complete|partial)|max_versions)$/.test(again.json.action || ""));
+  check("P1.3/P2.10 cron replay", replayOk && !(withAuth.json.report?.status === "complete" && /^upgraded/.test(again.json.action || "")), `${again.status} ${again.json.action} (first: ${withAuth.json.action} ${withAuth.json.report?.status} v${withAuth.json.report?.version})`);
   const eod = await call("/api/cron/eod-mark", { headers: { Authorization: `Bearer ${secret}` } });
   console.log(`  eod-mark → ${eod.status} ${eod.json.action} ${JSON.stringify(eod.json.detail || eod.json.note || "").slice(0, 140)}`);
 } else {
@@ -70,6 +73,17 @@ if (L.report) {
   check("P1.12 sections non-empty", S.top10_under_1000.items.length + S.avoids5.items.length + S.penny_under_50.items.length > 0 && S.market_overview.indices.length > 0);
   check("P1.13 top10", S.top10_under_1000.items.length <= 10 && S.top10_under_1000.items.every((p) => p.cmp < 1000 && p.cmp >= 50));
   check("P1.11 banned words + banner", banned(L).length === 0 && L.sebi_banner === SEBI && L.report.sebi_banner === SEBI, banned(L).join(","));
+  // report_v3.1: versions + stale index labels (older stored reports have neither; the UI labels them at render time)
+  const v31 = /^report_v3\.1\|/.test(L.report.method_version || "");
+  const vers = Array.isArray(L.versions) ? L.versions : [];
+  check("P3.1a versions envelope", vers.length >= 1 && L.report_version === (L.report.version ?? 1) && vers[vers.length - 1].report_hash === L.report.report_hash, `report_version=${L.report_version} versions=${vers.map((v) => `${v.version}:${v.status}`).join(",")} method=${L.report.method_version}`);
+  const idxRows = S.market_overview.indices;
+  const staleRows = idxRows.filter((i) => !i.bar_date || i.bar_date < L.report.based_on_close);
+  check("P3.3a stale index rows labelled (v3.1)", !v31 || (staleRows.every((i) => i.stale === true && /^Index data (as of \d{1,2} \w{3}|UNKNOWN) \(Yahoo had no \d{1,2} \w{3} bar\)$/.test(i.as_of_label || "")) && (L.report.status === "partial" || staleRows.length === 0)),
+    `${v31 ? "" : "pre-3.1 report (label computed in UI) · "}${idxRows.map((i) => `${i.symbol}@${i.bar_date}${i.as_of_label ? ` [${i.as_of_label}]` : ""}`).join(" ")}`);
+  check("P3.1b partial lists missing bars (v3.1)", !v31 || L.report.status !== "partial" || (Array.isArray(L.report.incomplete?.missing_bars) && typeof L.partial_note === "string"), `${L.report.status} missing=${(L.report.incomplete?.missing_bars || []).map((m) => m.symbol).join(",")}`);
+  const dv1 = await call(`/api/report/${L.report.for_session}?version=1`);
+  check("P3.1c ?version=1 audit read", dv1.status === 200 && dv1.json.report?.for_session === L.report.for_session && (dv1.json.report?.version ?? 1) === 1, `${dv1.status} ${dv1.json.report?.key}`);
 }
 // risk_v3 R:R floor on live lookups (read-only)
 for (const sym of ["BPCL", "ITC", "CANBK"]) {
