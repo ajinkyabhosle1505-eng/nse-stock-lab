@@ -18,8 +18,8 @@
  */
 import { mustRedis, parseJson } from "./redis";
 import { canonicalJSON, sha256hex } from "./hash";
-import { addCalendarDays, computeScoreSummary, emptyScoreSummary } from "./forecast";
-import type { ForecastBundle, ForecastPoint, PaperForecastPosition } from "./types";
+import { addCalendarDays, computeScoreSummary, CURRENT_FORECAST_METHOD, emptyScoreSummary, isForecastMethod } from "./forecast";
+import { FORECAST_METHODS, type ForecastBundle, type ForecastMethod, type ForecastPoint, type PaperForecastPosition } from "./types";
 import { SEBI_BANNER } from "./universe";
 
 export type Provenance = "server_frozen" | "client_created";
@@ -260,7 +260,7 @@ export async function loadViews(ids: string[]): Promise<PositionView[]> {
     const touch = (t: string) => (events.some((e) => e.type === t) ? true : null);
     const forecast: ForecastBundle | null = fc
       ? {
-          method: "atr_piecewise_T1_T2_v1",
+          method: methodOf(fc),
           status: fc.status,
           skip_reason: fc.skip_reason || undefined,
           createdAt: fc.created_at,
@@ -322,10 +322,23 @@ export async function userPositionIds(userId: string, limit = 200): Promise<stri
   return (res as unknown[]).map(String);
 }
 
-/** Headline stats: verified (server_frozen) only; unverified reported separately. */
+/** Stored forecasts without a recognised method id predate versioning → v1. */
+export function methodOf(fc: Pick<ServerForecast, "method_version"> | null | undefined): ForecastMethod {
+  return isForecastMethod(fc?.method_version) ? fc!.method_version as ForecastMethod : "atr_piecewise_T1_T2_v1";
+}
+
+/**
+ * Headline stats: verified (server_frozen) only; unverified reported separately.
+ * Scores are grouped by forecast method — v1 (legacy ATR levels, T1≈0.83R) and
+ * v2 (R:R-floor levels) are never pooled. `verified` / `unverified_pre_sync` are
+ * the CURRENT method only; every method is listed in `by_method`.
+ */
 export function scoreViews(views: PositionView[]) {
-  const pts = (verified: boolean) =>
-    views.filter((v) => v.server.verified === verified && v.forecast?.status === "ok").flatMap((v) => v.forecast!.points);
+  const CURRENT: ForecastMethod = CURRENT_FORECAST_METHOD;
+  const pts = (verified: boolean, method: ForecastMethod) =>
+    views
+      .filter((v) => v.server.verified === verified && v.forecast?.status === "ok" && v.forecast.method === method)
+      .flatMap((v) => v.forecast!.points);
   const summarize = (points: ForecastPoint[]) => {
     const s = computeScoreSummary(points);
     return {
@@ -336,10 +349,15 @@ export function scoreViews(views: PositionView[]) {
       lastMarkedAt: undefined,
     };
   };
+  const by_method = Object.fromEntries(
+    FORECAST_METHODS.map((m) => [m, { verified: summarize(pts(true, m)), unverified_pre_sync: summarize(pts(false, m)) }])
+  ) as Record<ForecastMethod, { verified: ReturnType<typeof summarize>; unverified_pre_sync: ReturnType<typeof summarize> }>;
   return {
-    verified: summarize(pts(true)),
-    unverified_pre_sync: summarize(pts(false)),
-    note: "Headline stats use server-frozen forecasts scored on FINAL closes only. Pre-sync (migrated) trades and >15% jumps (possible splits) are excluded. Small samples are noisy; this measures a research method, not a promise.",
+    method: CURRENT,
+    verified: by_method[CURRENT].verified,
+    unverified_pre_sync: by_method[CURRENT].unverified_pre_sync,
+    by_method,
+    note: "Headline stats use server-frozen forecasts scored on FINAL closes only, one forecast method at a time (v1 = legacy ATR levels, v2 = R:R-floor levels; never pooled). Pre-sync (migrated) trades and >15% jumps (possible splits) are excluded. Small samples are noisy; this measures a research method, not a promise.",
   };
 }
 

@@ -3,7 +3,8 @@
  *
  * /api/report/latest:
  *   target session = today if today is a trading day and it's ≥ 06:00 IST,
- *   else the last trading day (brief §2.6 expected_session).
+ *   else the last trading day (the stored report to serve). The envelope's
+ *   expected_session / stale come from reportSessions().
  *   Missing target on a trading day → self-generate under the job lease
  *   (so CoS at 08:53 IST always gets today's report even if cron was missed).
  *   Weekend/holiday → last stored report + `holiday` note (never generated
@@ -24,6 +25,8 @@ import {
   holidayName,
   isTradingDay,
   istParts,
+  nextTradingDay,
+  prevTradingDay,
   weekdayOf,
 } from "./marketCalendar";
 import { acquireLease, getJobRun, putJobRun } from "./jobs/lock";
@@ -51,16 +54,35 @@ export function targetSession(now: Date = new Date()): string {
   return expectedReportSession(now);
 }
 
+/**
+ * Sessions for the /latest envelope (fix 2026-10-05: on 28 Sep the wrapper said
+ * expected_session 2026-09-25 while the report was for 2026-09-28, because it
+ * used the 09:00 pre-open cut-off instead of the report cut-off).
+ *   expected_session: the session the current report is for —
+ *     trading day ≥ 06:00 IST (report time) → today;
+ *     before 06:00, weekend or holiday → the next trading session.
+ *   due_session: the newest session whose report must already exist —
+ *     today after 06:00 on a trading day, else the previous trading day.
+ *   stale = report.for_session < due_session (a weekend / pre-cron Friday report is
+ *   not stale just because the next session's report cannot exist yet).
+ */
+export function reportSessions(now: Date = new Date()): { expected: string; due: string } {
+  const p = istParts(now);
+  if (isTradingDay(p.date) && p.minutesOfDay >= SELF_GEN_AFTER_MIN) return { expected: p.date, due: p.date };
+  return { expected: isTradingDay(p.date) ? p.date : nextTradingDay(p.date), due: prevTradingDay(p.date) };
+}
+
 function envelope(report: ReportV1, now: Date, storage: StorageMode, served: Record<string, unknown>) {
   const p = istParts(now);
-  const expected = expectedReportSession(now);
+  const { expected, due } = reportSessions(now);
   const closedToday = !isTradingDay(p.date);
   const wd = weekdayOf(p.date);
   return {
     report,
-    stale: report.for_session < expected,
+    stale: report.for_session < due,
     age_hours: Math.round(((now.getTime() - Date.parse(report.generated_at)) / 3600000) * 10) / 10,
     expected_session: expected,
+    due_session: due,
     ...(closedToday
       ? { holiday: { date: p.date, name: holidayName(p.date) || (wd === 0 || wd === 6 ? "Weekend" : "NSE closed") } }
       : {}),
@@ -112,7 +134,7 @@ export async function serveLatest(now: Date = new Date(), ifNoneMatch?: string |
   if (!report) {
     return {
       status: note?.includes("being generated") ? 202 : 503,
-      body: { error: "no_report_available", note: note || "No report yet.", expected_session: expectedReportSession(now), storage, sebi_banner: SEBI_BANNER },
+      body: { error: "no_report_available", note: note || "No report yet.", expected_session: reportSessions(now).expected, storage, sebi_banner: SEBI_BANNER },
       headers: { ...CORS, "Cache-Control": "no-store" },
     };
   }

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { randomUUID } from "crypto";
 import { j, readJson, requireDevice } from "@/lib/apiHelpers";
 import { rateLimit } from "@/lib/identity";
-import { addCalendarDays, buildForecastBundle } from "@/lib/forecast";
+import { addCalendarDays, buildForecastBundle, isForecastMethod } from "@/lib/forecast";
 import { istDate, tradingDayOnOrBefore } from "@/lib/marketCalendar";
 import { bundleHash, forecastInputHash, freezePosition, type ServerForecast, type ServerPosition } from "@/lib/paperServer";
 import { normalizeNseSymbol } from "@/lib/yahoo";
@@ -11,7 +11,8 @@ import type { PaperForecastPosition } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const METHOD = "atr_piecewise_T1_T2_v1";
+// Browser forecasts carry their own method id (v1 before risk_v3, v2 after); unknown → v1.
+const methodFor = (m: unknown) => (isForecastMethod(m) ? m : "atr_piecewise_T1_T2_v1");
 
 /**
  * POST /api/paper/migrate {items: PaperForecastPosition[] (≤50)}
@@ -74,7 +75,8 @@ export async function POST(req: NextRequest) {
           .map((p) => ({ dayOffset: Math.round(Number(p.dayOffset)), predictedClose: Number(p.predictedClose) }))
           .filter((p) => p.dayOffset >= 1 && p.dayOffset <= 90 && p.predictedClose > 0)
           .map((p) => ({ ...p, targetDate: addCalendarDays(clientFillDate, p.dayOffset) }));
-        const recomputed = buildForecastBundle({ action: "buy", entry, sl, targets, atr_14: cf.params?.atr_14, checkDays: points.map((p) => p.dayOffset), filledAt: boughtAt, structure: cf.params?.structure, breakout_state: cf.params?.breakout_state });
+        const METHOD = methodFor(cf.method);
+        const recomputed = buildForecastBundle({ action: "buy", entry, sl, targets, atr_14: cf.params?.atr_14, checkDays: points.map((p) => p.dayOffset), filledAt: boughtAt, structure: cf.params?.structure, breakout_state: cf.params?.breakout_state, method: METHOD });
         const client_consistent = !!recomputed && recomputed.status !== "skipped" && recomputed.points.length === points.length && recomputed.points.every((p, i) => Math.abs(p.predictedClose - points[i].predictedClose) <= 0.01);
         const base = { method_version: METHOD, params: cf.params, checkDays: points.map((p) => p.dayOffset), points };
         fc = { position_id: id, user_id: dev.userId, yahoo_symbol: yahoo, ...base, status: "ok", skip_reason: null, input_hash: forecastInputHash({ migrated_from: localId, params: cf.params, points }), bundle_hash: bundleHash(base), provenance: "client_created", client_consistent, created_at: now };

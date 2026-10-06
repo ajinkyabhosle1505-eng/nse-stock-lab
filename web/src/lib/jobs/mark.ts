@@ -15,6 +15,7 @@ import { fetchYahooChartX, type DailyBarX } from "../yahoo";
 import { mapPool } from "../live";
 import {
   appendTouch,
+  methodOf,
   putActualOnce,
   writeMark,
   type ServerActual,
@@ -139,7 +140,7 @@ export async function finalizeMarksAndScore(now: Date = new Date(), onlyIds?: st
       const duePts = fc.points.filter((p) => dueSet.has(`${id}:${p.dayOffset}`));
       if (!duePts.length) continue;
       const bundle: ForecastBundle = {
-        method: "atr_piecewise_T1_T2_v1",
+        method: methodOf(fc),
         status: "ok",
         createdAt: fc.created_at,
         params: fc.params,

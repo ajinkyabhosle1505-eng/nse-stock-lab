@@ -20,7 +20,8 @@ import { fetchYahooChartX, type ChartResult, type YahooHistory } from "./yahoo";
 import { computeTech } from "./tech";
 import { fetchLiveFunda } from "./funda";
 import { fetchLiveNews, fetchMarketHeadlines, type NewsItem } from "./news";
-import { mergeVerdict, sizePosition, type LaneStub } from "./risk";
+import { mergeVerdict, sizePosition, type LaneStub, type LevelPolicy } from "./risk";
+import { rrPlain } from "./rr";
 import { diversifiedPickScore, diversifyPicks, mapPool } from "./live";
 import { plainReason } from "./plain";
 import { buildForecastBundle } from "./forecast";
@@ -34,7 +35,7 @@ import {
   prevTradingDay,
 } from "./marketCalendar";
 import { canonicalJSON, sha256hex } from "./hash";
-import type { TechFields, TechLane, Verdict } from "./types";
+import type { ForecastMethod, TechFields, TechLane, Verdict } from "./types";
 import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
 
 /**
@@ -43,9 +44,23 @@ import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
  * and confidence is capped −1 (risk.ts fundaGap:"unknown"). Stored v1 reports
  * are still re-verified with the v1 rules (see fundaGapPolicy).
  */
-export const METHOD_VERSION = "report_v2|risk_v2|atr_piecewise_T1_T2_v1";
+/**
+ * report_v3|risk_v3 (2026-10-05): R:R floor — T1 ≥ entry + 1R, T2 ≥ entry + 1.8R,
+ * extended to real resistance (swing high / prior 20-/50-day high) when that is
+ * farther out; resistance under entry + 1R blocks the buy (hold + plain reason).
+ * Paper scenario path for v3 levels = atr_piecewise_T1_T2_v2 (same formula, new
+ * levels). Top 10 lists verified-funda names before funda_unknown ones.
+ * Stored v1/v2 reports re-verify with their own level rules (levelPolicy).
+ */
+export const METHOD_VERSION = "report_v3|risk_v3|atr_piecewise_T1_T2_v2";
 export function fundaGapPolicy(method: string = METHOD_VERSION): "avoid" | "unknown" {
   return method.startsWith("report_v1|") ? "avoid" : "unknown";
+}
+export function levelPolicy(method: string = METHOD_VERSION): LevelPolicy {
+  return /^report_v[12]\|/.test(method) ? "atr_v2" : "rr_floor_v3";
+}
+export function scenarioMethodOf(method: string = METHOD_VERSION): ForecastMethod {
+  return levelPolicy(method) === "atr_v2" ? "atr_piecewise_T1_T2_v1" : "atr_piecewise_T1_T2_v2";
 }
 const BUDGET_INR = 10000;
 const RISK_PCT = 1;
@@ -131,6 +146,7 @@ export function verdictFor(s: SymbolInput, method: string = METHOD_VERSION): Ver
     funda: stub(s.funda, s.ticker),
     news: stub(s.news, s.ticker),
     fundaGap: fundaGapPolicy(method),
+    levels: levelPolicy(method),
   });
   return { ...v, sector: s.sector };
 }
@@ -173,10 +189,12 @@ export function buildSections(
     .filter(({ v }) => v.action === "buy" && cmpOf(v) < 1000 && cmpOf(v) >= 50 && v.entry != null && v.sl != null)
     .map(({ v }) => v);
   const eligible = buys.length;
+  const v3 = levelPolicy(method) === "rr_floor_v3";
   const top = diversifyPicks(
     [...buys].sort((a, b) => diversifiedPickScore(b) - diversifiedPickScore(a)),
     BUDGET_INR,
-    10
+    10,
+    { verifiedFirst: v3 }
   );
   const picks: ReportPick[] = top.map((v, i) => {
     const sized = sizePosition({ budget_inr: BUDGET_INR, risk_pct: RISK_PCT, entry: v.entry!, sl: v.sl! });
@@ -198,8 +216,37 @@ export function buildSections(
       plain_why: plainReason(String(v.reasons?.[0] || "Tape/funda gates pass for a paper setup")),
       risk_flags: v.risk_flags || [],
       bar_date: inp.symbols[v.ticker]?.bar?.date || inp.based_on_close,
+      // v3 only (v1/v2 picks keep their stored shape so old reports re-verify)
+      ...(v3
+        ? {
+            risk_per_share: r2(v.entry! - v.sl!),
+            rr_t1: v.rr_t1 ?? null,
+            rr_t2: v.rr_t2 ?? null,
+            rr_plain: rrPlain(v.entry, v.sl, v.targets[0], v.targets[1]) ?? "R:R UNKNOWN",
+            t1_basis: v.t1_basis ?? null,
+            t2_basis: v.t2_basis ?? null,
+            funda_status: v.risk_flags?.includes("funda_unknown") ? ("UNKNOWN (not verified)" as const) : ("verified" as const),
+          }
+        : {}),
     };
   });
+
+  // v3: names whose tape passed but real resistance caps T1 under 1R (downgraded to hold).
+  const rrCapped = v3
+    ? rows
+        .filter(({ v }) => v.action !== "buy" && v.resistance_cap && /^Resistance at ₹/.test(String(v.reasons?.[0] || "")))
+        .filter(({ v }) => cmpOf(v) < 1000 && cmpOf(v) >= 50)
+        .map(({ v }) => ({
+          ticker: v.ticker,
+          sector: v.sector || null,
+          cmp: cmpOf(v),
+          resistance: v.resistance_cap!.price,
+          source: v.resistance_cap!.source,
+          rr_to_resistance: v.resistance_cap!.rr,
+          reason: `Resistance at ₹${v.resistance_cap!.price} (${v.resistance_cap!.source}) caps upside below 1R (${v.resistance_cap!.rr}R)`,
+        }))
+        .sort((a, b) => a.ticker.localeCompare(b.ticker))
+    : [];
 
   const deep = picks.slice(0, 3).map((p) => {
     const s = inp.symbols[p.ticker];
@@ -211,6 +258,7 @@ export function buildSections(
       targets: [p.t1, ...(p.t2 != null ? [p.t2] : [])],
       atr_14: typeof t.atr_14 === "number" ? t.atr_14 : null,
       checkDays: [7, 14, 30],
+      method: scenarioMethodOf(method),
       filledAt: `${inp.based_on_close}T12:00:00+05:30`,
       structure: t.structure,
       breakout_state: t.breakout_state,
@@ -239,7 +287,9 @@ export function buildSections(
         source: s.funda?.sources?.[0] ?? null,
       },
       news: { items, note: s.news?.note ?? "news not fetched" },
-      scenario_path_label: "Paper scenario path (ATR) — atr_piecewise_T1_T2_v1, from ATR levels; not a price call",
+      scenario_path_label: v3
+        ? "Paper scenario path — atr_piecewise_T1_T2_v2, from the R:R-floor levels (T1 ≥ 1R, T2 ≥ 1.8R); not a price call"
+        : "Paper scenario path (ATR) — atr_piecewise_T1_T2_v1, from ATR levels; not a price call",
       scenario_path: (bundle?.points || []).map((x) => ({ dayOffset: x.dayOffset, predictedClose: x.predictedClose })),
     };
   });
@@ -319,6 +369,7 @@ export function buildSections(
       top10_under_1000: {
         items: picks,
         n_eligible: eligible,
+        ...(v3 ? { rr_capped: rrCapped } : {}),
         ...(picks.length < 10 ? { note: `Only ${picks.length} names passed gates today (max ${MAX_PER_SECTOR} per sector; not padded).` } : {}),
       },
       deep_dive_top3: { items: deep, ...(deep.length ? {} : { note: "No paper setups passed gates — nothing to deep-dive." }) },
@@ -594,7 +645,9 @@ export function assembleReport(
     sebi_banner: SEBI_BANNER,
     data_notes: [
       "Prices are NSE daily closes via Yahoo (raw close); pre-open / indicative prices are not used. Levels are from the prior close.",
-      "Levels: entry = close, SL = entry − 2.4×ATR14, ATR level T1 = +2×ATR, T2 = +3.5×ATR (risk.ts deriveLevels). Confidence is a gate score, not a probability.",
+      levelPolicy(method) === "atr_v2"
+        ? "Levels: entry = close, SL = entry − 2.4×ATR14, ATR level T1 = +2×ATR, T2 = +3.5×ATR (risk.ts deriveLevels). Confidence is a gate score, not a probability."
+        : "Levels: entry = close, SL = entry − 2.4×ATR14 (R = entry − SL). T1 = at least entry + 1R and T2 = at least entry + 1.8R, moved out to a real resistance (swing high, prior 20-/50-day high) when that is farther. Resistance below entry + 1R blocks the paper buy. Confidence is a gate score, not a probability.",
       "Research / paper setups only — this service is not SEBI-registered.",
       "Sector preference (high-delivery PSU/Infra/Banks/IT/Energy) NOT applied: delivery % is not available from our feeds.",
       ...(fundaGapPolicy(method) === "unknown"

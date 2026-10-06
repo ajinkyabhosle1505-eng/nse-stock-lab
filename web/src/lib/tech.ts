@@ -182,6 +182,14 @@ export function computeTech(
 
   const support = nearbyLevels(lows, cmp, "support", 2);
   const resistance = nearbyLevels(highs, cmp, "resistance", 2);
+  // risk_v3: real overhead supply for the R:R floor — swing-high pivots above
+  // CMP (no range fallback) and the prior 20/50-session highs (latest bar
+  // excluded, so today's own wick is not counted as resistance).
+  const resistanceSwing = nearbyLevels(highs, cmp, "resistance", 3);
+  const priorHigh = (n: number): number | null =>
+    bars.length >= n + 1 ? round(Math.max(...bars.slice(-(n + 1), -1).map((b) => b.high))) : null;
+  const high20 = priorHigh(20);
+  const high50 = priorHigh(50);
 
   // fallback supports/resistances from recent range
   if (support.length === 0 && bars.length >= 20) {
@@ -219,6 +227,9 @@ export function computeTech(
     price_bucket: priceBucket(cmp),
     timeframe: "1D",
     closes_30d,
+    resistance_swing: resistanceSwing,
+    high_20d: high20 ?? "UNKNOWN",
+    high_50d: high50 ?? "UNKNOWN",
   };
 
   if (brk.level != null) {

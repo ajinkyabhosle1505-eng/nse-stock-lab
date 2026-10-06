@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const maxDuration = 30;
 
 /**
- * POST paper buy — compute atr_piecewise_T1_T2_v1 forecast once.
+ * POST paper buy — compute the paper scenario forecast once (atr_piecewise_T1_T2_v2 for risk_v3 levels).
  * Body: { ticker, entry, sl?, targets?, qty, budget_inr, checkDays, atr_14?, structure?, breakout_state?, sector? }
  * No-DB fallback only (stateless). With Upstash configured this returns 410.
  */

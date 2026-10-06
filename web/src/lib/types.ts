@@ -30,6 +30,21 @@ export interface Verdict {
   sizing_mode?: "risk_pct" | "afford_one_share" | string;
   /** Plain-language why buy (budget picks). */
   plain_why?: string;
+  /** risk_v3 (rr_floor_v3) — R:R reported honestly; r_r = T1 R:R. */
+  level_method?: string;
+  risk_per_share?: number | null;
+  rr_t1?: number | null;
+  rr_t2?: number | null;
+  /** e.g. "Risk ₹15.9 to stop, ₹16 to T1 (1.0R), ₹28.7 to T2 (1.8R)" */
+  rr_plain?: string | null;
+  t1_basis?: string | null;
+  t2_basis?: string | null;
+  resistance_cap?: { price: number; source: string; rr: number } | null;
+  rr_rule?: string;
+  /** Fundamentals missing (Screener/Yahoo failed): shown as UNKNOWN, never estimated. */
+  funda_unknown?: boolean;
+  funda_unknown_label?: string;
+  funda_unknown_reasons?: string[];
 }
 
 export interface SkippedSample {
@@ -127,8 +142,16 @@ export interface ForecastScoreSummary {
   lastMarkedAt: string | null;
 }
 
+/**
+ * v1: levels from the legacy ATR rule (T1 = +2×ATR ≈ 0.83R).
+ * v2: same piecewise formula, levels from the risk_v3 R:R floor (T1 ≥ 1R, T2 ≥ 1.8R).
+ * Accuracy is always reported per method — never pooled.
+ */
+export type ForecastMethod = "atr_piecewise_T1_T2_v1" | "atr_piecewise_T1_T2_v2";
+export const FORECAST_METHODS: ForecastMethod[] = ["atr_piecewise_T1_T2_v1", "atr_piecewise_T1_T2_v2"];
+
 export interface ForecastBundle {
-  method: "atr_piecewise_T1_T2_v1";
+  method: ForecastMethod;
   status?: "ok" | "skipped";
   skip_reason?: string;
   createdAt: string;
@@ -214,6 +237,11 @@ export interface TechFields {
   timeframe: string;
   /** Last ~30 daily closes for sparkline (P1b). */
   closes_30d?: number[];
+  /** risk_v3: nearest swing-high pivots above CMP (no range fallback). */
+  resistance_swing?: number[];
+  /** risk_v3: highest high of the 20 / 50 sessions before the latest bar. */
+  high_20d?: number | "UNKNOWN";
+  high_50d?: number | "UNKNOWN";
 }
 
 export interface TechLane {

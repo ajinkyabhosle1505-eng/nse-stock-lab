@@ -21,6 +21,24 @@ export interface ReportPick {
   plain_why: string;
   risk_flags: string[];
   bar_date: string;
+  /** report_v3+ only */
+  risk_per_share?: number;
+  rr_t1?: number | null;
+  rr_t2?: number | null;
+  rr_plain?: string;
+  t1_basis?: string | null;
+  t2_basis?: string | null;
+  funda_status?: "verified" | "UNKNOWN (not verified)";
+}
+
+export interface RrCapped {
+  ticker: string;
+  sector: string | null;
+  cmp: number;
+  resistance: number;
+  source: string;
+  rr_to_resistance: number;
+  reason: string;
 }
 
 export interface LaneStat {
@@ -61,7 +79,7 @@ export interface ReportV1 {
       headlines_as_of: string;
       not_available: string[];
     };
-    top10_under_1000: { items: ReportPick[]; n_eligible: number; note?: string };
+    top10_under_1000: { items: ReportPick[]; n_eligible: number; note?: string; rr_capped?: RrCapped[] };
     deep_dive_top3: {
       items: (ReportPick & {
         tech: Record<string, unknown>;

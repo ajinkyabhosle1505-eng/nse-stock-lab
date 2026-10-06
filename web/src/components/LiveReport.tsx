@@ -157,11 +157,23 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
               left={`${p.rank}. ${p.ticker}`}
               mid={`${p.sector || "—"} · conf ${p.confidence_1_10}/10`}
               right={`Close ${inr(p.cmp)}`}
-              sub={`SL ${inr(p.sl)} · ATR level T1 ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)} — ${p.plain_why}${p.risk_flags?.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}`}
+              sub={`SL ${inr(p.sl)} · ${p.rr_plain ? "T1" : "ATR level T1"} ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)}${p.rr_plain ? ` · ${p.rr_plain}` : p.r_r != null ? ` · T1 R:R ${p.r_r}` : ""} — ${p.plain_why}${p.risk_flags?.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}`}
             />
           ))}
           {!s.top10_under_1000.items.length ? <Empty note={s.top10_under_1000.note} /> : null}
           {s.top10_under_1000.note && s.top10_under_1000.items.length ? <p className="text-[11px] text-slate-500">{s.top10_under_1000.note}</p> : null}
+          {s.top10_under_1000.rr_capped?.length ? (
+            <details className="text-[11px] text-slate-400">
+              <summary>Held back: resistance caps upside below 1R ({s.top10_under_1000.rr_capped.length})</summary>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {s.top10_under_1000.rr_capped.map((c) => (
+                  <li key={c.ticker}>
+                    {c.ticker} ({inr(c.cmp)}): {c.reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ) : null}
         </div>
       </Card>
 
@@ -174,6 +186,14 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
                 <span className="text-xs text-slate-400">{inr(d.cmp)} · bar {d.bar_date}</span>
               </div>
               <p className="mt-1 text-xs">{d.plain_why}</p>
+              <p className="mt-1 text-xs text-slate-200">
+                Entry {inr(d.entry)} · SL {inr(d.sl)} · T1 {inr(d.t1)}
+                {d.t2 != null ? ` · T2 ${inr(d.t2)}` : ""}
+                {d.rr_plain ? ` — ${d.rr_plain}` : d.r_r != null ? ` — T1 R:R ${d.r_r}` : ""}
+              </p>
+              {d.risk_flags.includes("funda_unknown") ? (
+                <p className="mt-1 text-[11px] text-amber-200">Fundamentals UNKNOWN (not verified) — PE/ROE/D-E unavailable, never estimated.</p>
+              ) : null}
               <p className="mt-1 text-[11px] text-slate-400">
                 {d.scenario_path_label}: {d.scenario_path.map((p) => `D${p.dayOffset} ${inr(p.predictedClose)}`).join(" · ") || "—"}
               </p>

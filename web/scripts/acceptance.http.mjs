@@ -9,6 +9,15 @@ const SEBI = "Not SEBI-registered advice. Paper / research only. Levels are not 
 const BANNED = [/\brecommendation\b/i, /\btips?\b/i, /\badvice\b/i, /target price/i, /guaranteed/i, /sure-shot/i, /will hit/i, /expected return/i, /accuracy proves/i];
 const banned = (o) => { const t = JSON.stringify(o).split(SEBI).join(" "); return BANNED.filter((r) => r.test(t)).map(String); };
 const results = [];
+// NSE calendar (same file the app uses) → the session /api/report/latest must report as expected_session
+import { readFileSync } from "node:fs";
+const HOL = new Set(JSON.parse(readFileSync(new URL("../src/data/nse-holidays-2026.json", import.meta.url), "utf8")).holidays.map((h) => h.date));
+const istNow = () => { const d = new Date(Date.now() + 330 * 60000); return { date: d.toISOString().slice(0, 10), min: d.getUTCHours() * 60 + d.getUTCMinutes() }; };
+const isTD = (iso) => { const wd = new Date(`${iso}T12:00:00Z`).getUTCDay(); return wd !== 0 && wd !== 6 && !HOL.has(iso); };
+const shift = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const nextTD = (iso) => { let d = iso; do d = shift(d, 1); while (!isTD(d)); return d; };
+function expectedSession() { const { date } = istNow(); return isTD(date) ? date : nextTD(date); }
+
 const check = (id, ok, info = "") => { results.push({ id, ok }); console.log(`${ok ? "PASS" : "FAIL"} ${id}${info ? " — " + info : ""}`); };
 
 let cookie = "";
@@ -42,6 +51,12 @@ if (secret) {
 const latest = await call("/api/report/latest");
 const L = latest.json;
 console.log(`  /api/report/latest ${latest.status} in ${Date.now() - t0} ms: for_session=${L.report?.for_session} status=${L.report?.status} stale=${L.stale} age_hours=${L.age_hours} storage=${L.storage} served=${L.served?.source}`);
+{
+  const exp = expectedSession();
+  const { date, min } = istNow();
+  const afterCron = isTD(date) && min >= 360;
+  check("P1.17 expected_session", L.expected_session === exp && (!afterCron || L.report?.for_session === exp || L.stale === true), `expected_session=${L.expected_session} (want ${exp}) for_session=${L.report?.for_session} requested=${L.served?.requested_session} stale=${L.stale}`);
+}
 check("P1.10a latest headers", latest.headers.get("access-control-allow-origin") === "*" && !!latest.headers.get("etag") && (/s-maxage=300/.test(latest.headers.get("cache-control") || "") || !!latest.headers.get("x-vercel-cache")), `${latest.headers.get("etag")?.slice(0, 14)} · ${latest.headers.get("cache-control")}`);
 const opt = await fetch(base + "/api/report/latest", { method: "OPTIONS" });
 check("P1.10b OPTIONS 204", opt.status === 204);
@@ -55,6 +70,18 @@ if (L.report) {
   check("P1.12 sections non-empty", S.top10_under_1000.items.length + S.avoids5.items.length + S.penny_under_50.items.length > 0 && S.market_overview.indices.length > 0);
   check("P1.13 top10", S.top10_under_1000.items.length <= 10 && S.top10_under_1000.items.every((p) => p.cmp < 1000 && p.cmp >= 50));
   check("P1.11 banned words + banner", banned(L).length === 0 && L.sebi_banner === SEBI && L.report.sebi_banner === SEBI, banned(L).join(","));
+}
+// risk_v3 R:R floor on live lookups (read-only)
+for (const sym of ["BPCL", "ITC", "CANBK"]) {
+  const q = await call(`/api/lookup?symbol=${sym}`);
+  const v = q.json?.verdict;
+  if (!v || v.entry == null || v.sl == null) { check(`P1.15 lookup ${sym} R:R`, q.status === 200 || q.status === 502, `no levels (${q.status}) — UNKNOWN, not invented`); continue; }
+  const R = v.entry - v.sl;
+  const ok = v.level_method === "rr_floor_v3" && typeof v.r_r === "number" && "rr_t1" in v && "rr_t2" in v && typeof v.rr_plain === "string" &&
+    (v.action !== "buy" || (v.targets[0] >= v.entry + R - 0.01 && v.targets[1] >= v.entry + 1.8 * R - 0.01 && v.rr_t1 >= 1 && v.rr_t2 >= 1.8)) &&
+    (!v.resistance_cap || v.action !== "buy") &&
+    (!v.risk_flags?.includes("funda_unknown") || (v.funda_unknown_label === "Fundamentals UNKNOWN (not verified)" && Array.isArray(v.funda_unknown_reasons)));
+  check(`P1.15 lookup ${sym} R:R`, ok && banned(q.json).length === 0, `${v.action} entry ${v.entry} SL ${v.sl} T1 ${v.targets[0]} T2 ${v.targets[1]} r_r ${v.r_r}/${v.rr_t2} · ${v.rr_plain}${v.resistance_cap ? ` · cap ${v.resistance_cap.price} (${v.resistance_cap.source})` : ""}${v.funda_unknown ? " · funda UNKNOWN" : ""}`);
 }
 const nf = await call("/api/report/2020-01-06");
 // Vercel's CDN consumes s-maxage and strips it from the client header (x-vercel-cache shows it cached)

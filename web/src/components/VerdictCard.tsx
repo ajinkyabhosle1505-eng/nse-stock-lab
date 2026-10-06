@@ -79,6 +79,16 @@ export default function VerdictCard({
         <Metric label="Horizon" value={plan.time_horizon} />
       </div>
 
+      {verd.rr_plain ? (
+        <p className="mt-3 text-xs font-medium text-slate-200">R:R · {verd.rr_plain}</p>
+      ) : null}
+      {verd.funda_unknown_label ? (
+        <p className="mt-1 text-xs text-amber-200">
+          {verd.funda_unknown_label}
+          {verd.funda_unknown_reasons?.length ? ` — ${verd.funda_unknown_reasons.join("; ")}` : ""}
+        </p>
+      ) : null}
+
       {topReason ? (
         <p className="mt-3 line-clamp-2 text-xs leading-relaxed text-slate-400">
           {topReason}

@@ -304,15 +304,24 @@ function LookupPage() {
               <Item
                 label="funda_quality"
                 value={
-                  data.funda.fields.funda_quality != null
-                    ? String(data.funda.fields.funda_quality)
-                    : "—"
+                  verd.funda_unknown
+                    ? "UNKNOWN (not verified)"
+                    : data.funda.fields.funda_quality != null
+                      ? String(data.funda.fields.funda_quality)
+                      : "—"
                 }
               />
               <Item label="PE (TTM)" value={fmtKnown(data.funda.fields.pe_ttm)} />
               <Item label="ROE %" value={fmtKnown(data.funda.fields.roe_pct)} />
               <Item label="D/E" value={fmtKnown(data.funda.fields.debt_equity)} />
             </dl>
+            {verd.funda_unknown_label ? (
+              <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+                {verd.funda_unknown_label}
+                {verd.funda_unknown_reasons?.length ? ` — ${verd.funda_unknown_reasons.join("; ")}` : ""}. Nothing estimated; the
+                tape decides and confidence is one notch lower.
+              </p>
+            ) : null}
             <div>
               <p className="text-[10px] uppercase tracking-wider text-slate-500">Headline</p>
               <p className="mt-0.5 text-sm text-slate-100">

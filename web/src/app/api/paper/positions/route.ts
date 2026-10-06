@@ -3,7 +3,7 @@ import { randomUUID } from "crypto";
 import { j, readJson, requireDevice } from "@/lib/apiHelpers";
 import { rateLimit } from "@/lib/identity";
 import { runLookup } from "@/lib/live";
-import { buildForecastBundle } from "@/lib/forecast";
+import { buildForecastBundle, CURRENT_FORECAST_METHOD } from "@/lib/forecast";
 import { istDate, isTradingDay, prevTradingDay, sessionPhase, tradingDayOnOrBefore } from "@/lib/marketCalendar";
 import {
   bundleHash,
@@ -20,7 +20,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const METHOD = "atr_piecewise_T1_T2_v1";
+// New forecasts copy T1/T2/SL from the risk_v3 verdict (R:R floor) → method v2.
+// Stored v1 forecasts are write-once and keep their own method id.
+const METHOD = CURRENT_FORECAST_METHOD;
 
 /**
  * POST /api/paper/positions — server-frozen paper buy.
@@ -86,6 +88,7 @@ export async function POST(req: NextRequest) {
     targets: v.targets,
     atr_14: atr,
     checkDays,
+    method: METHOD,
     filledAt: `${fill_session_date}T12:00:00+05:30`,
     structure,
     breakout_state,

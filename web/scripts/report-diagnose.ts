@@ -5,7 +5,38 @@
  *   npx tsx --tsconfig tsconfig.json scripts/report-diagnose.ts --inputs saved.json   (offline, pure rebuild)
  */
 import { readFileSync, writeFileSync } from "node:fs";
-import { generateReport, buildSections, verdictFor, type ReportInputs } from "../src/lib/report";
+import { generateReport, buildSections, verdictFor, METHOD_VERSION, type ReportInputs } from "../src/lib/report";
+
+const LEGACY = "report_v2|risk_v2|atr_piecewise_T1_T2_v1";
+
+/** risk_v3 R:R effect on the same inputs: legacy (v2) vs current (v3) levels. */
+function rrCompare(inputs: ReportInputs) {
+  const old = buildSections(inputs, null, LEGACY).sections;
+  const now = buildSections(inputs, null, METHOD_VERSION).sections;
+  const spread = (xs: (number | null | undefined)[]) => {
+    const v = xs.filter((x): x is number => typeof x === "number").sort((a, b) => a - b);
+    return v.length ? `min ${v[0]} · median ${v[Math.floor(v.length / 2)]} · max ${v[v.length - 1]} (${new Set(v).size} distinct)` : "—";
+  };
+  console.log(`\nR:R effect (same inputs, based_on_close ${inputs.based_on_close})`);
+  console.log(`  ${LEGACY}: buys ${old.final_summary.counts.buy} · Top 10 ${old.top10_under_1000.items.length} · T1 R:R ${spread(old.top10_under_1000.items.map((p) => p.r_r))}`);
+  console.log(`  ${METHOD_VERSION}: buys ${now.final_summary.counts.buy} · Top 10 ${now.top10_under_1000.items.length}`);
+  console.log(`    T1 R:R ${spread(now.top10_under_1000.items.map((p) => p.rr_t1))}`);
+  console.log(`    T2 R:R ${spread(now.top10_under_1000.items.map((p) => p.rr_t2))}`);
+  for (const p of now.top10_under_1000.items) console.log(`    ${p.rank}. ${p.ticker.padEnd(11)} ${p.rr_plain} · T1 ${p.t1_basis} · T2 ${p.t2_basis}${p.funda_status !== "verified" ? " · funda UNKNOWN" : ""}`);
+  const wasBuy = new Set<string>();
+  for (const t of inputs.universe) {
+    const s = inputs.symbols[t];
+    if (s?.tech && verdictFor(s, LEGACY)?.action === "buy") wasBuy.add(t);
+  }
+  const down = inputs.universe.filter((t) => wasBuy.has(t) && verdictFor(inputs.symbols[t])?.action !== "buy");
+  console.log(`  Downgraded buy → non-buy under v3 (${down.length}, all prices):`);
+  for (const t of down) {
+    const v = verdictFor(inputs.symbols[t])!;
+    console.log(`    ${t.padEnd(11)} ${String(v.cmp).padStart(9)} → ${v.action}: ${v.reasons?.[0]}`);
+  }
+  const added = inputs.universe.filter((t) => !wasBuy.has(t) && inputs.symbols[t]?.tech && verdictFor(inputs.symbols[t])?.action === "buy");
+  if (added.length) console.log(`  New buys under v3: ${added.join(", ")}`);
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -28,6 +59,7 @@ async function main() {
     console.log("lanes", JSON.stringify(gen.report.lanes));
     if (args[1]) writeFileSync(args[1], JSON.stringify({ report: gen.report, inputs }, null, 1));
   }
+  rrCompare(inputs);
   const byReason = new Map<string, string[]>();
   for (const u of unknowns) {
     const k = `${u.lane}: ${u.reason.replace(/\(last .*\)/, "").trim()}`;
@@ -44,7 +76,7 @@ async function main() {
     const cmp = typeof v.cmp === "number" ? v.cmp : NaN;
     let why = "";
     if (top10.includes(t)) why = "IN TOP10";
-    else if (v.action !== "buy") why = `${v.action}: ${(v.reasons || []).filter((r) => /Funda|News|Penny|size/i.test(r)).slice(0, 2).join(" | ") || v.reasons?.[0] || ""}`;
+    else if (v.action !== "buy") why = `${v.action}: ${(v.reasons || []).filter((r) => /Resistance|Funda|News|Penny|size/i.test(r)).slice(0, 2).join(" | ") || v.reasons?.[0] || ""}`;
     else if (cmp >= 1000) why = "buy but cmp>=1000";
     else if (cmp < 50) why = "buy but cmp<50";
     else why = `buy but cut (sector cap ${s.sector})`;

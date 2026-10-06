@@ -79,6 +79,11 @@ export type PlainPlanInput = {
   stop_invalidation?: number | null;
   sl?: number | null;
   time_horizon?: string | null;
+  rr_plain?: string | null;
+  action?: string;
+  resistance_cap?: { price: number; source: string; rr: number } | null;
+  funda_unknown_label?: string;
+  funda_unknown_reasons?: string[];
 };
 
 /** P1a — plain CTA lines from verdict plan fields. */
@@ -117,6 +122,20 @@ export function plainPlanLines(plan: PlainPlanInput): string[] {
     lines.push(`Exit if closes below ${fmtInrPlain(stop)}`);
   } else {
     lines.push("Exit if closes below: UNKNOWN");
+  }
+
+  if (plan.rr_plain) {
+    lines.push(plan.rr_plain);
+  }
+  if (plan.resistance_cap && plan.action !== "buy") {
+    lines.push(
+      `Resistance at ${fmtInrPlain(plan.resistance_cap.price)} (${plan.resistance_cap.source}) caps upside below 1R — no paper buy`
+    );
+  }
+  if (plan.funda_unknown_label) {
+    lines.push(
+      `${plan.funda_unknown_label}${plan.funda_unknown_reasons?.length ? ` — ${plan.funda_unknown_reasons.join("; ")}` : ""}`
+    );
   }
 
   const horizon = (plan.time_horizon || "").trim();

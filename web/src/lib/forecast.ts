@@ -1,15 +1,24 @@
 /**
- * Paper scenario path (ATR) — method atr_piecewise_T1_T2_v1
- * Stock Research brief 2026-09-22. Never invent levels or closes.
+ * Paper scenario path — piecewise T1/T2 formula from the Stock Research brief
+ * 2026-09-22. Never invent levels or closes.
+ *   atr_piecewise_T1_T2_v1: levels from the legacy ATR rule (stored forecasts).
+ *   atr_piecewise_T1_T2_v2: same formula, levels from the risk_v3 R:R floor
+ *   (docs/paper-forecast-method-v2-rr-floor-2026-10-05.md). New buys use v2.
  */
 
 import type {
   ForecastBundle,
+  ForecastMethod,
   ForecastPoint,
   ForecastScoreSummary,
 } from "./types";
 
-const METHOD = "atr_piecewise_T1_T2_v1" as const;
+/** Method id for NEW paper forecasts (levels from the current verdict = risk_v3). */
+export const CURRENT_FORECAST_METHOD: ForecastMethod = "atr_piecewise_T1_T2_v2";
+
+export function isForecastMethod(m: unknown): m is ForecastMethod {
+  return m === "atr_piecewise_T1_T2_v1" || m === "atr_piecewise_T1_T2_v2";
+}
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
@@ -68,6 +77,8 @@ export interface BuildForecastInput {
   filledAt?: string | Date;
   structure?: string;
   breakout_state?: string;
+  /** Defaults to CURRENT_FORECAST_METHOD (the label only; the formula is shared). */
+  method?: ForecastMethod;
 }
 
 /**
@@ -84,6 +95,7 @@ export function buildForecastBundle(
         .filter((d) => Number.isFinite(d) && d >= 1)
     ),
   ].sort((a, b) => a - b);
+  const METHOD = input.method ?? CURRENT_FORECAST_METHOD;
 
   const entry = input.entry;
   const sl = input.sl;

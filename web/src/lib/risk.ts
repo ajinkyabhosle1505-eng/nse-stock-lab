@@ -5,6 +5,7 @@ import {
   SEBI_BANNER,
 } from "./universe";
 import { numOrNull } from "./tech";
+import { RR_T1_MIN, RR_T2_MIN, rrOf, rrPlain } from "./rr";
 import type { TechLane, Verdict } from "./types";
 
 export interface SizeInput {
@@ -98,29 +99,111 @@ function round(n: number, d = 2): number {
   return Math.round(n * f) / f;
 }
 
-function deriveLevels(tech: TechLane): {
+/**
+ * Level policy.
+ * "atr_v2" (report_v1/v2, legacy): SL = entry − 2.4×ATR, T1 = +2×ATR, T2 = +3.5×ATR
+ *   → T1 is 0.83R by construction. Kept so stored v1/v2 reports re-verify.
+ * "rr_floor_v3" (report_v3|risk_v3): structure SL (nearest swing low − 0.25×ATR,
+ *   clamped to 1.0–2.4×ATR); T1 ≥ entry + 1.0R, T2 ≥ entry + 1.8R,
+ *   moved out to real overhead resistance (swing high / prior 20- or 50-day high)
+ *   when that sits beyond the floor. Resistance below entry + 1R caps the setup → no buy.
+ */
+export type LevelPolicy = "atr_v2" | "rr_floor_v3";
+export const CURRENT_LEVEL_POLICY: LevelPolicy = "rr_floor_v3";
+
+export interface ResistanceLevel {
+  price: number;
+  source: "swing high" | "20-day high" | "50-day high" | "listed resistance";
+}
+
+export interface LevelPlan {
   entry: number | null;
   sl: number | null;
   targets: number[];
-} {
+  /** rr_floor_v3 only */
+  risk?: number;
+  t1_basis?: string;
+  t2_basis?: string;
+  cap?: (ResistanceLevel & { rr: number }) | null;
+}
+
+const ceil2 = (n: number) => Math.ceil(n * 100 - 1e-6) / 100;
+
+function stopFor(tech: TechLane, entry: number, policy: LevelPolicy = "atr_v2"): number | null {
+  const atr = numOrNull(tech.fields.atr_14);
+  if (policy === "rr_floor_v3" && atr != null && atr > 0) {
+    // Structure stop: just under the nearest swing low (0.25×ATR buffer), kept between
+    // 1.0×ATR (noise) and 2.4×ATR (the legacy wide stop). No support → 2.0×ATR.
+    const sup = (tech.fields.support_levels ?? []).filter((x) => typeof x === "number" && x < entry);
+    const nearest = sup.length ? Math.max(...sup) : null;
+    const raw = nearest != null ? entry - (nearest - 0.25 * atr) : 2.0 * atr;
+    const dist = Math.min(2.4 * atr, Math.max(1.0 * atr, raw));
+    return round(entry - dist);
+  }
+  if (atr != null && atr > 0) return round(entry - 2.4 * atr);
+  if (tech.fields.support_levels?.length) return round(Math.min(...tech.fields.support_levels) * 0.995);
+  return null;
+}
+
+/** Real overhead resistance above `entry`, nearest first (deduped). */
+export function overheadResistance(tech: TechLane, entry: number): ResistanceLevel[] {
+  const f = tech.fields;
+  const out: ResistanceLevel[] = [];
+  const swing = Array.isArray(f.resistance_swing) ? f.resistance_swing : null;
+  for (const r of swing ?? f.resistance_levels ?? []) {
+    if (typeof r === "number" && Number.isFinite(r)) out.push({ price: r, source: swing ? "swing high" : "listed resistance" });
+  }
+  const h20 = numOrNull(f.high_20d);
+  const h50 = numOrNull(f.high_50d);
+  if (h20 != null) out.push({ price: h20, source: "20-day high" });
+  if (h50 != null) out.push({ price: h50, source: "50-day high" });
+  const seen = new Set<number>();
+  return out
+    .filter((r) => r.price > entry)
+    .sort((a, b) => a.price - b.price)
+    .filter((r) => (seen.has(r.price) ? false : (seen.add(r.price), true)));
+}
+
+export function deriveLevels(tech: TechLane, policy: LevelPolicy = CURRENT_LEVEL_POLICY): LevelPlan {
   const cmp = numOrNull(tech.fields.cmp);
   const atr = numOrNull(tech.fields.atr_14);
   if (cmp == null) return { entry: null, sl: null, targets: [] };
 
   const entry = cmp;
-  let sl: number | null = null;
-  if (atr != null && atr > 0) {
-    sl = round(entry - 2.4 * atr);
-  } else if (tech.fields.support_levels?.length) {
-    sl = round(Math.min(...tech.fields.support_levels) * 0.995);
+  const sl = stopFor(tech, entry, policy);
+
+  if (policy === "atr_v2") {
+    const targets: number[] = [];
+    if (atr != null && atr > 0) {
+      targets.push(round(entry + 2 * atr));
+      targets.push(round(entry + 3.5 * atr));
+    }
+    return { entry, sl, targets };
   }
 
-  const targets: number[] = [];
-  if (atr != null && atr > 0) {
-    targets.push(round(entry + 2 * atr));
-    targets.push(round(entry + 3.5 * atr));
-  }
-  return { entry, sl, targets };
+  if (sl == null || !(entry - sl > 0)) return { entry, sl, targets: [] };
+  const R = entry - sl;
+  const floor1 = ceil2(entry + RR_T1_MIN * R);
+  const floor2 = ceil2(entry + RR_T2_MIN * R);
+  const maxT2 = entry + 3 * R;
+  const res = overheadResistance(tech, entry);
+
+  const capRes = res.find((r) => r.price < floor1) || null;
+  const t1Res = res.find((r) => r.price >= floor1 && r.price < floor2);
+  const t1 = t1Res ? t1Res.price : floor1;
+  const t2Res = res.find((r) => r.price >= floor2 && r.price <= maxT2);
+  const t2 = t2Res ? t2Res.price : floor2;
+  const cap = capRes ? { ...capRes, rr: round((capRes.price - entry) / R, 2) } : null;
+  return {
+    entry,
+    sl,
+    // A capped setup is reported honestly: T1 = the resistance that caps it (R:R < 1).
+    targets: cap ? [cap.price, t2] : [t1, t2],
+    risk: round(R),
+    t1_basis: cap ? `capped by ${cap.source}` : t1Res ? t1Res.source : "1R floor",
+    t2_basis: t2Res ? t2Res.source : "1.8R floor",
+    cap,
+  };
 }
 
 function buyBias(tech: TechLane): {
@@ -257,7 +340,7 @@ function applyFundaNewsGates(
   exceptionalTape: boolean,
   reasons: string[],
   risk_flags: string[],
-  fundaGap: "avoid" | "unknown" = "avoid"
+  fundaGap: "avoid" | "unknown" = "unknown"
 ): { favorBuy: boolean; forceAvoid: boolean; holdLean: boolean; fundaUnknown: boolean } {
   let buy = favorBuy;
   let forceAvoid = false;
@@ -380,9 +463,12 @@ export interface MergeOpts {
   /**
    * How to treat funda that is missing (Screener blocked / not fetched).
    * "avoid" (legacy default): funda_quality=fail → avoid unless tape exceptional.
-   * "unknown" (report_v2): funda shown as UNKNOWN, tape decides, confidence −1.
+   * "unknown" (report_v2+, /lookup, /budget-picks — default): funda shown as
+   * UNKNOWN (flag funda_unknown), tape decides, confidence −1.
    */
   fundaGap?: "avoid" | "unknown";
+  /** Level policy (default rr_floor_v3). Stored v1/v2 reports pass "atr_v2". */
+  levels?: LevelPolicy;
 }
 
 /**
@@ -394,7 +480,9 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
   const budget_inr = opts.budget_inr ?? 10000;
   const risk_pct = opts.risk_pct ?? 1;
   const cmp = numOrNull(tech.fields.cmp);
-  const { entry, sl, targets } = deriveLevels(tech);
+  const policy = opts.levels ?? CURRENT_LEVEL_POLICY;
+  const plan = deriveLevels(tech, policy);
+  const { entry, sl, targets } = plan;
   const bias = buyBias(tech);
   const sector =
     strField(opts.funda?.fields, "sector") || sectorOf(tech.ticker);
@@ -442,7 +530,7 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
     bias.exceptionalTape,
     reasons,
     risk_flags,
-    opts.fundaGap
+    opts.fundaGap ?? "unknown"
   );
 
   const sized = sizePosition({ budget_inr, risk_pct, entry, sl });
@@ -480,12 +568,44 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
     confidence = 4;
   }
 
+  // risk_v3: never a buy whose T1 R:R is below 1 — real resistance under entry + 1R caps it.
+  if (policy === "rr_floor_v3" && plan.cap) {
+    risk_flags.push("rr_below_1r");
+    if (action === "buy") {
+      action = "hold";
+      confidence = 5;
+      reasons.unshift(
+        `Resistance at ₹${plan.cap.price} (${plan.cap.source}) caps upside below 1R (${plan.cap.rr}R to it) — no paper buy`
+      );
+    }
+  }
+
   let r_r: number | null = null;
   if (targets.length) {
     const risk = entry - sl;
     const reward = targets[0] - entry;
     if (risk > 0) r_r = round(reward / risk, 2);
   }
+  if (policy === "rr_floor_v3" && action === "buy" && !(r_r != null && r_r >= RR_T1_MIN)) {
+    // Defensive: the floor makes this unreachable; never ship a sub-1R buy.
+    action = "hold";
+    confidence = 5;
+    reasons.unshift(`T1 R:R ${r_r ?? "UNKNOWN"} is below 1R — no paper buy`);
+  }
+  const v3 =
+    policy === "rr_floor_v3"
+      ? {
+          level_method: "rr_floor_v3",
+          risk_per_share: plan.risk ?? null,
+          rr_t1: rrOf(entry, sl, targets[0]),
+          rr_t2: rrOf(entry, sl, targets[1]),
+          rr_plain: rrPlain(entry, sl, targets[0], targets[1]),
+          t1_basis: plan.t1_basis ?? null,
+          t2_basis: plan.t2_basis ?? null,
+          resistance_cap: plan.cap ?? null,
+          rr_rule: `T1 ≥ ${RR_T1_MIN}R, T2 ≥ ${RR_T2_MIN}R (R = entry − SL); resistance under 1R blocks a buy`,
+        }
+      : {};
 
   const shares = action === "buy" && sized.ok ? sized.shares : null;
   const size_inr = action === "buy" && sized.ok ? sized.size_inr : null;
@@ -515,6 +635,8 @@ export function mergeVerdict(tech: TechLane, opts: MergeOpts = {}): Verdict {
     time_horizon: buildTimeHorizon(opts.news),
     live: true,
     yahoo_symbol: tech.yahoo_symbol,
+    ...(gated.fundaUnknown ? { funda_unknown: true } : {}),
+    ...v3,
   };
 }
 

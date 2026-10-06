@@ -78,3 +78,21 @@ Findings 2026-09-25 (report_v1: 6 in Top 10, 29 UNKNOWN):
   These stay UNKNOWN (`yahoo_null_bar`), never filled from the 23-Sep bar or intraday bars. The builder
   now tries query2 once when the based_on_close row is missing. NSE bhavcopy (official) returns 403 from
   cloud/box IPs, so it can't be used as a fallback.
+
+## 2026-10-05: report_v3 | risk_v3 (R:R floor), funda UNKNOWN everywhere, expected_session fix
+- **R:R floor** (`risk.ts deriveLevels(…, "rr_floor_v3")`): T1 ≥ entry + 1R, T2 ≥ entry + 1.8R (R = entry − SL, SL unchanged),
+  moved out to a real resistance (swing high, prior 20/50-day high: new tech fields `resistance_swing`, `high_20d`, `high_50d`).
+  Resistance below entry + 1R → `hold` with "Resistance at ₹X caps upside below 1R" (flag `rr_below_1r`). Verdict adds
+  `rr_t1`, `rr_t2`, `rr_plain`, `t1_basis`, `t2_basis`, `resistance_cap`. Report picks (v3 only) add `rr_t1`, `rr_t2`, `rr_plain`,
+  `funda_status`, and the Top 10 adds `rr_capped[]` (names held back and why). Stored v1/v2 reports re-verify with
+  `levelPolicy(method_version) = "atr_v2"`.
+- **Paper method** `atr_piecewise_T1_T2_v2` for new forecasts. v1 forecasts are untouched. Scores are per method
+  (`by_method`). See `docs/paper-forecast-method-v2-rr-floor-2026-10-05.md`.
+- **Funda gap = UNKNOWN on /lookup, /budget-picks and paper buy** (`fundaGap:"unknown"` is now the default): flag
+  `funda_unknown`, confidence −1, `funda_unknown_label` "Fundamentals UNKNOWN (not verified)" + `funda_unknown_reasons`.
+  Budget picks: tech pass first, then funda only for tape buys (shared Screener pacer), with a 40 s funda deadline
+  (`BUDGET_FUNDA_BUDGET_MS`). Verified names are listed before UNKNOWN ones (`diversifyPicks(…, {verifiedFirst})`).
+- **/api/report/latest** `expected_session` = the session the current report is for: today from 06:00 IST on a trading
+  day, otherwise the next trading session. New `due_session` (latest session whose report must already exist).
+  `stale = report.for_session < due_session`.
+- Compare old and new levels on the same inputs: `scripts/report-diagnose.ts <session>` prints an "R:R effect" block.

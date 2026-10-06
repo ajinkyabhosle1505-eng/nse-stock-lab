@@ -25,6 +25,13 @@ type ServerInfo = {
   pnl: { value: number; basis: string; as_of: string } | null;
 };
 type ViewPos = PaperForecastPosition & { server?: ServerInfo };
+type ScoresPayload = {
+  method?: string;
+  verified: ScoreBlock;
+  unverified_pre_sync: ScoreBlock;
+  by_method?: Record<string, { verified: ScoreBlock; unverified_pre_sync: ScoreBlock }>;
+};
+
 type ScoreBlock = {
   n_scored: number;
   mape_pct: number | null;
@@ -71,7 +78,7 @@ function PaperPageInner() {
   const highlight = searchParams.get("highlight");
   const [positions, setPositions] = useState<ViewPos[]>([]);
   const [me, setMe] = useState<MeResponse | null>(null);
-  const [serverScores, setServerScores] = useState<{ verified: ScoreBlock; unverified_pre_sync: ScoreBlock } | null>(null);
+  const [serverScores, setServerScores] = useState<ScoresPayload | null>(null);
   const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [restoreCode, setRestoreCode] = useState("");
   const [idNote, setIdNote] = useState<string | null>(null);
@@ -85,7 +92,7 @@ function PaperPageInner() {
   const loadServer = useCallback(async (withMark: boolean) => {
     const r = await fetch(`/api/paper/portfolio${withMark ? "?mark=1" : ""}`, { cache: "no-store" });
     if (!r.ok) return false;
-    const j = (await r.json()) as { positions?: ViewPos[]; scores?: { verified: ScoreBlock; unverified_pre_sync: ScoreBlock } };
+    const j = (await r.json()) as { positions?: ViewPos[]; scores?: ScoresPayload };
     setPositions(j.positions || []);
     setServerScores(j.scores || null);
     return true;
@@ -297,6 +304,15 @@ function PaperPageInner() {
               Pending {serverScores.verified.n_pending} · sparse {serverScores.verified.n_sparse} · possible-split excluded {serverScores.verified.n_split_excluded}. Pre-sync (unverified) trades scored separately: n={serverScores.unverified_pre_sync.n_scored}
               {serverScores.unverified_pre_sync.mape_pct != null ? `, MAPE ${serverScores.unverified_pre_sync.mape_pct}%` : ""} — not in headline numbers.
             </p>
+            {serverScores.method ? (
+              <p className="text-[11px] text-slate-500">
+                Headline = method {serverScores.method} only (R:R-floor levels). Methods are never pooled.
+                {Object.entries(serverScores.by_method || {})
+                  .filter(([m]) => m !== serverScores.method)
+                  .map(([m, b]) => ` ${m} (legacy ATR levels): verified n=${b.verified.n_scored}${b.verified.mape_pct != null ? `, MAPE ${b.verified.mape_pct}%` : ""}${b.verified.hit_within_1atr_pct != null ? `, within ~1 ATR ${b.verified.hit_within_1atr_pct}%` : ""}.`)
+                  .join("")}
+              </p>
+            ) : null}
           </div>
         ) : null}
         <div className={`grid grid-cols-2 gap-2 text-sm ${serverMode ? "hidden" : ""}`}>
