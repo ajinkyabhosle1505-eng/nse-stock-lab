@@ -206,6 +206,25 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
         </div>
       </Card>
 
+      {/* report_v3.2+: absent on older stored reports → not rendered (never back-filled) */}
+      {s.other_buys_1000_plus ? (
+        <Card title="Other buys (₹1000+)">
+          <p className="mb-2 text-[11px] text-slate-500">{s.other_buys_1000_plus.rule}</p>
+          <div className="space-y-2">
+            {s.other_buys_1000_plus.items.map((p) => (
+              <Row
+                key={p.ticker}
+                left={`${p.rank}. ${p.ticker}`}
+                mid={`${p.sector || "—"} · conf ${p.confidence_1_10}/10`}
+                right={`Close ${inr(p.cmp)}`}
+                sub={`Entry ${inr(p.entry)} · SL ${inr(p.sl)} · T1 ${inr(p.t1)}${p.t2 != null ? ` · T2 ${inr(p.t2)}` : ""} · ${p.shares} sh ≈ ${inr(p.size_inr)}${p.rr_plain ? ` · ${p.rr_plain}` : ""}${p.rr_t1 != null ? ` (T1 ${p.rr_t1}R${p.rr_t2 != null ? `, T2 ${p.rr_t2}R` : ""})` : ""} — ${(p.reasons_plain?.length ? p.reasons_plain : [p.plain_why]).join(" · ")}${p.risk_flags?.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}${p.risk_flags?.length ? ` · flags: ${p.risk_flags.join(", ")}` : ""}${(p.close_label ?? barAsOf(p.bar_date, r.based_on_close)) ? ` · ${p.close_label ?? barAsOf(p.bar_date, r.based_on_close)}` : ""}`}
+              />
+            ))}
+            {!s.other_buys_1000_plus.items.length || s.other_buys_1000_plus.note ? <Empty note={s.other_buys_1000_plus.note} /> : null}
+          </div>
+        </Card>
+      ) : null}
+
       <Card title="Deep dive: top 3 paper setups">
         <div className="space-y-3">
           {s.deep_dive_top3.items.map((d) => (
@@ -214,6 +233,7 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
                 <span className="font-semibold text-white">{d.ticker}</span>
                 <span className="text-xs text-slate-400">{inr(d.cmp)} · bar {d.bar_date}</span>
               </div>
+              {d.source_label ? <p className="text-[11px] text-sky-200">{d.source_label}{d.sector ? ` · ${d.sector}` : ""} · conf {d.confidence_1_10}/10</p> : null}
               <p className="mt-1 text-xs">{d.plain_why}</p>
               <p className="mt-1 text-xs text-slate-200">
                 Entry {inr(d.entry)} · SL {inr(d.sl)} · T1 {inr(d.t1)}
@@ -230,8 +250,32 @@ export default function LiveReport({ fallback }: { fallback: ReactNode }) {
             </div>
           ))}
           {!s.deep_dive_top3.items.length ? <Empty note={s.deep_dive_top3.note} /> : null}
+          {s.deep_dive_top3.items.length && s.deep_dive_top3.note ? <p className="text-[11px] text-slate-500">{s.deep_dive_top3.note}</p> : null}
         </div>
       </Card>
+
+      {s.breakout_watch ? (
+        <Card title="Watch for breakout (not buys)">
+          <p className="mb-1 text-xs text-amber-200">{s.breakout_watch.label}</p>
+          <p className="mb-2 text-[11px] text-slate-500">{s.breakout_watch.rule}</p>
+          <div className="space-y-2">
+            {s.breakout_watch.items.map((w) => (
+              <Row
+                key={w.ticker}
+                left={`${w.rank}. ${w.ticker}`}
+                mid={`${w.sector || "—"} · watch only — no paper buy`}
+                right={`Close ${inr(w.cmp)}`}
+                sub={`${w.trigger_text} — ${w.distance_r}R${w.distance_atr != null ? ` / ${w.distance_atr} ATR` : ""} above the close; resistance today is ${w.rr_to_resistance}R away.${
+                  w.if_breakout
+                    ? ` If it breaks out: entry ≈ ${inr(w.if_breakout.entry)} · SL ${inr(w.if_breakout.sl)} · T1 ${inr(w.if_breakout.t1)}${w.if_breakout.t2 != null ? ` · T2 ${inr(w.if_breakout.t2)}` : ""} — ${w.if_breakout.rr_plain} (T1 ${w.if_breakout.t1_basis ?? "—"}). Gates re-checked on that day.`
+                    : ` ${w.if_breakout_note ?? "Trigger only."}`
+                }${w.risk_flags.includes("funda_unknown") ? " · Fundamentals UNKNOWN (not verified)" : ""}`}
+              />
+            ))}
+            {!s.breakout_watch.items.length ? <Empty note={s.breakout_watch.note} /> : null}
+          </div>
+        </Card>
+      ) : null}
 
       <Card title="5 names our gates skip">
         <div className="space-y-2">

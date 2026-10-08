@@ -57,6 +57,49 @@ export interface RrCapped {
   reason: string;
 }
 
+/** report_v3.2+: a buy-rated name priced ₹1000 or more (same gates as Top 10, no price cap). */
+export type OtherBuy = ReportPick & { reasons_plain: string[] };
+
+/** report_v3.2+: where a deep-dive name came from. */
+export type DeepSource = "top10" | "other_buys" | "buy_set";
+
+/**
+ * report_v3.2+: near-miss — would be a paper buy except real resistance caps T1 under 1R.
+ * NOT a buy and never paper-bought; the trigger is always above the close.
+ */
+export interface BreakoutWatch {
+  rank: number;
+  ticker: string;
+  sector: string | null;
+  cmp: number;
+  label: "watch only — not a buy, no paper buy";
+  trigger: number;
+  trigger_source: string;
+  trigger_text: string;
+  /** resistance levels under 1R that the trigger clears (nearest first; the last one is the trigger) */
+  levels_cleared: { price: number; source: string }[];
+  distance_r: number;
+  distance_atr: number | null;
+  risk_per_share: number;
+  rr_to_resistance: number;
+  /** same risk_v3 rules re-applied with entry = trigger; null when they cannot be computed honestly */
+  if_breakout: {
+    entry: number;
+    sl: number;
+    t1: number;
+    t2: number | null;
+    rr_t1: number | null;
+    rr_t2: number | null;
+    rr_plain: string;
+    t1_basis: string | null;
+    t2_basis: string | null;
+    note: string;
+  } | null;
+  if_breakout_note?: string;
+  risk_flags: string[];
+  bar_date: string;
+}
+
 export interface LaneStat {
   source: string;
   first_fetch_at: string | null;
@@ -110,8 +153,13 @@ export interface ReportV1 {
       not_available: string[];
     };
     top10_under_1000: { items: ReportPick[]; n_eligible: number; note?: string; rr_capped?: RrCapped[] };
+    /** report_v3.2+ (absent on older stored reports — never back-filled) */
+    other_buys_1000_plus?: { items: OtherBuy[]; n_eligible: number; sector_capped: string[]; rule: string; note?: string };
     deep_dive_top3: {
       items: (ReportPick & {
+        /** report_v3.2+ */
+        source?: DeepSource;
+        source_label?: string;
         tech: Record<string, unknown>;
         funda: Record<string, unknown>;
         news: Record<string, unknown>;
@@ -120,6 +168,8 @@ export interface ReportV1 {
       })[];
       note?: string;
     };
+    /** report_v3.2+ (absent on older stored reports) */
+    breakout_watch?: { items: BreakoutWatch[]; n_candidates: number; rule: string; label: string; note?: string };
     avoids5: { items: { ticker: string; sector: string | null; cmp: number; reason: string; flags: string[]; severity: string }[]; note?: string };
     penny_under_50: { items: { ticker: string; cmp: number; action: string; note: string }[]; warning: string; note?: string };
     final_summary: {
@@ -127,6 +177,9 @@ export interface ReportV1 {
       top3: string[];
       changes_vs_prev: { prev_key: string | null; top10_in: string[]; top10_out: string[]; avoids_in: string[]; avoids_out: string[] };
       headline: string;
+      /** report_v3.2+ */
+      other_buys?: string[];
+      breakout_watch?: string[];
     };
   };
 }

@@ -6,7 +6,7 @@
  * Uses live Yahoo/screener for the generation tests (never invents data).
  */
 import { expectedReportSession, isTradingDay, prevTradingDay } from "../src/lib/marketCalendar";
-import { generateReport, verifyReport, reportUniverse, verdictFor, assembleReport, METHOD_VERSION } from "../src/lib/report";
+import { generateReport, verifyReport, reportUniverse, verdictFor, assembleReport, buildSections, METHOD_VERSION, BREAKOUT_WATCH_MAX, type ReportInputs, type SymbolInput } from "../src/lib/report";
 import { mergeVerdict } from "../src/lib/risk";
 import type { TechLane } from "../src/lib/types";
 import { getReport, getReportInputs, getReportVersion, listReportVersions, putReportOnce, putReportUpgrade, listReportDates } from "../src/lib/reportStore";
@@ -95,7 +95,7 @@ async function main() {
   const v2Picks = asV2.sections.top10_under_1000.items;
   check(
     "P1.8d v2 report re-verifies with v2 rules (legacy levels, no v3 fields)",
-    verifyReport(asV2, JSON.parse(JSON.stringify(gen.inputs)), null).ok && v2Picks.every((p) => !("rr_plain" in p)) && !("rr_capped" in asV2.sections.top10_under_1000) && rep.method_version === METHOD_VERSION && METHOD_VERSION.startsWith("report_v3.1|"),
+    verifyReport(asV2, JSON.parse(JSON.stringify(gen.inputs)), null).ok && v2Picks.every((p) => !("rr_plain" in p)) && !("rr_capped" in asV2.sections.top10_under_1000) && rep.method_version === METHOD_VERSION && METHOD_VERSION.startsWith("report_v3.2|"),
     `v2 picks=${v2Picks.length} r_r=${[...new Set(v2Picks.map((p) => p.r_r))].join("/")}`
   );
 
@@ -148,6 +148,73 @@ async function main() {
       capped20.action === "hold" && capped20.resistance_cap?.source === "20-day high" &&
       legacy.action === "buy" && legacy.r_r === 0.83,
     `${free.rr_plain} | ${atRes.rr_plain} | ${capped.reasons![0]}`
+  );
+
+  // #8f stored report_v3.1 reports still verify, and carry none of the v3.2 sections (absent, not faked)
+  const asV31 = assembleReport(gen.inputs, null, { lanes: rep.lanes, unknowns: rep.unknowns, partial: rep.status === "partial", generated_at: rep.generated_at, elapsed_ms: rep.timing.elapsed_ms, scan_deadline_ms: rep.timing.scan_deadline_ms, method_version: "report_v3.1|risk_v3|atr_piecewise_T1_T2_v2", version: 1 });
+  const s31 = asV31.sections;
+  check(
+    "P1.8f v3.1 report re-verifies with v3.1 rules (no v3.2 sections)",
+    verifyReport(asV31, JSON.parse(JSON.stringify(gen.inputs)), null).ok && !("other_buys_1000_plus" in s31) && !("breakout_watch" in s31) && !("other_buys" in s31.final_summary) && s31.deep_dive_top3.items.every((d) => !("source" in d)) && "other_buys_1000_plus" in rep.sections && "breakout_watch" in rep.sections,
+    `v3.1 deep ${s31.deep_dive_top3.items.length} · v3.2 other buys ${rep.sections.other_buys_1000_plus?.items.length} · watch ${rep.sections.breakout_watch?.items.length}`
+  );
+
+  // #18 report_v3.2 coverage on synthetic inputs (no live data needed, fully deterministic):
+  // a ₹1000+ buy lands in Other buys AND the deep dive; the back-fill never duplicates;
+  // breakout-watch items are never buy-labelled and each trigger is above the close.
+  const synthSym = (ticker: string, cmp: number, sector: string, res: number[] = []): SymbolInput => {
+    const k = cmp / 100;
+    const t = synth(res.map((x) => Math.round(x * k * 100) / 100));
+    const f = { ...t.fields, cmp, atr_14: 2 * k, support_levels: [95 * k], dma_20: 97 * k, dma_50: 95 * k, dma_200: 90 * k };
+    return { ticker, yahoo_symbol: `${ticker}.NS`, sector, bar: { date: "2026-10-07", open: cmp, high: cmp, low: cmp, close: cmp, adjclose: null, volume: 1 }, tech: f as SymbolInput["tech"], funda: { fields: pass.fields, sources: ["synthetic"], note: "synthetic" }, news: null };
+  };
+  const synthInputs = (syms: SymbolInput[]): ReportInputs => ({
+    for_session: "2026-10-08", based_on_close: "2026-10-07", universe: syms.map((x) => x.ticker).sort(),
+    symbols: Object.fromEntries(syms.map((x) => [x.ticker, x])), indices: [], global_cues: [], headlines: [], headlines_as_of: "2026-10-08T00:00:00.000Z",
+  });
+  const noBelow = synthInputs([synthSym("BIGA", 1726.1, "Finance"), synthSym("CAPA", 440, "Banks", [102]), synthSym("CAPB", 1242.5, "Banks", [101, 103]), synthSym("CAPC", 234.55, "Banks", [104])]);
+  const mixed = synthInputs([synthSym("MIDA", 200, "Auto"), synthSym("BIGA", 1500, "Finance"), synthSym("BIGB", 2500, "Finance"), synthSym("BIGC", 3500, "Finance"), synthSym("BIGD", 1800, "IT")]);
+  const meta0 = { lanes: rep.lanes, unknowns: [], partial: false, generated_at: "2026-10-08T01:30:00.000Z", elapsed_ms: 1, scan_deadline_ms: 1 };
+  const rNo = assembleReport(noBelow, null, meta0);
+  const rMix = assembleReport(mixed, null, meta0);
+  const sNo = rNo.sections;
+  const sMix = rMix.sections;
+  const ob1 = sNo.other_buys_1000_plus!;
+  const big = ob1.items.find((p) => p.ticker === "BIGA");
+  check(
+    "P4.1 ₹1000+ buy → Other buys + deep dive (Top 10 empty, not padded)",
+    sNo.top10_under_1000.items.length === 0 && !!big && big.action === "buy" && big.cmp >= 1000 && (big.rr_t1 ?? 0) >= 1 && (big.rr_t2 ?? 0) >= 1.8 && typeof big.rr_plain === "string" && big.reasons_plain.length > 0 &&
+      sNo.deep_dive_top3.items.length === 1 && sNo.deep_dive_top3.items[0].ticker === "BIGA" && sNo.deep_dive_top3.items[0].source === "other_buys" && /Other buys/.test(sNo.deep_dive_top3.items[0].source_label || "") &&
+      /BIGA/.test(sNo.final_summary.headline) && /Other buys/.test(sNo.final_summary.headline),
+    `${big?.ticker} entry ${big?.entry} SL ${big?.sl} T1 ${big?.t1} T2 ${big?.t2} · ${big?.rr_plain} · deep ${sNo.deep_dive_top3.items.map((d) => `${d.ticker} (${d.source_label})`).join(", ")}`
+  );
+  const dMix = sMix.deep_dive_top3.items.map((d) => d.ticker);
+  const obMix = sMix.other_buys_1000_plus!;
+  const noDup = (xs: string[]) => new Set(xs).size === xs.length;
+  check(
+    "P4.2 deep-dive back-fill: Top 10 first, then by ranking; never duplicates; ≤2/sector in Other buys",
+    dMix.length === 3 && noDup(dMix) && dMix[0] === "MIDA" && sMix.deep_dive_top3.items[0].source === "top10" && sMix.deep_dive_top3.items.slice(1).every((d) => d.source !== "top10") &&
+      noDup(sNo.deep_dive_top3.items.map((d) => d.ticker)) && noDup(rep.sections.deep_dive_top3.items.map((d) => d.ticker)) && rep.sections.deep_dive_top3.items.length <= 3 &&
+      obMix.items.filter((p) => p.sector === "Finance").length === 2 && obMix.sector_capped.length === 1 && obMix.n_eligible === 4 && obMix.items.length === 3,
+    `deep ${sMix.deep_dive_top3.items.map((d) => `${d.ticker}:${d.source}`).join(", ")} · other ${obMix.items.map((p) => p.ticker).join(",")} capped ${obMix.sector_capped.join(",")} · live deep ${rep.sections.deep_dive_top3.items.map((d) => `${d.ticker}:${d.source}`).join(",") || "none"}`
+  );
+  const bwAll = [...(sNo.breakout_watch?.items || []), ...(rep.sections.breakout_watch?.items || [])];
+  const buyish = new Set([...sNo.top10_under_1000.items, ...ob1.items, ...sNo.deep_dive_top3.items].map((p) => p.ticker));
+  const bwOk =
+    (sNo.breakout_watch?.items.length || 0) === 3 &&
+    bwAll.every((w) => !("action" in w) && /not a buy, no paper buy/.test(w.label) && w.trigger > w.cmp && /^Watch for a daily close above ₹/.test(w.trigger_text) && !(w.if_breakout && w.if_breakout.entry !== w.trigger)) &&
+    sNo.breakout_watch!.items.every((w) => !buyish.has(w.ticker) && verdictFor(noBelow.symbols[w.ticker])?.action !== "buy") &&
+    sNo.breakout_watch!.items.every((w, i, a) => i === 0 || a[i - 1].distance_r <= w.distance_r) &&
+    (rep.sections.breakout_watch?.items.length || 0) <= BREAKOUT_WATCH_MAX && /not buys/i.test(sNo.breakout_watch!.label) && /max \d+ shown/.test(sNo.breakout_watch!.rule);
+  check("P4.3 Watch for breakout: never buy-labelled, trigger > close, ranked by distance, capped", bwOk, sNo.breakout_watch!.items.map((w) => `${w.ticker} ${w.trigger_text} ${w.distance_r}R${w.if_breakout ? ` → ${w.if_breakout.rr_plain}` : ""}`).join(" | "));
+  const reNo = assembleReport(JSON.parse(JSON.stringify(noBelow)), null, meta0);
+  const bwPhrase = { a: "Watch for breakout", b: sNo.breakout_watch!.label, c: sNo.breakout_watch!.rule, d: "watch for breakout" };
+  check(
+    "P4.4 banned words + banner (v3.2 sections) · deterministic",
+    bannedHits(rNo).length === 0 && bannedHits(rMix).length === 0 && bannedHits(bwPhrase).length === 0 && bannedHits(rep).length === 0 && rNo.sebi_banner === SEBI_BANNER &&
+      reNo.report_hash === rNo.report_hash && verifyReport(rNo, JSON.parse(JSON.stringify(noBelow)), null).ok &&
+      JSON.stringify(buildSections(noBelow, null).sections.breakout_watch) === JSON.stringify(sNo.breakout_watch),
+    [...bannedHits(rNo), ...bannedHits(rMix), ...bannedHits(bwPhrase)].join(",") || `hash ${rNo.report_hash.slice(0, 12)}`
   );
 
   // #16 paper method v2: new forecasts carry the v2 id; scores never pool v1 and v2

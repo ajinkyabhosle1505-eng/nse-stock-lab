@@ -179,3 +179,53 @@ https://nse-stock-lab.vercel.app/api/cron/premarket-retry`.
 Shipped in `4b53971` (Vercel success). The stored 2026-10-06 report (report_v2, `complete`) stays as is — a
 complete report is never superseded; on /report its 1 Oct index rows are now labelled at render time
 ("Index data as of 1 Oct (Yahoo had no 5 Oct bar)"). The first v3.1 report is the 2026-10-07 one.
+
+## 2026-10-08: report_v3.2 — Other buys (₹1000+), deep-dive back-fill, Watch for breakout
+Trigger: the 2026-10-08 report (based on the 7 Oct close, report_v3.1) had 1 buy (SBILIFE, ₹1726.1), so the
+Top 10 under ₹1000 was empty, the deep dive was empty and the buy was never named. That stored report stays as is
+(write-once); /report renders it without the new cards.
+
+**Method** `report_v3.2|risk_v3|atr_piecewise_T1_T2_v2`. Gates / levels unchanged (risk_v3). New sections are added
+only when `coverageRules(method_version)` (≥ 3.2); stored v1/v2/v3/v3.1 reports re-verify byte-for-byte with their
+own shape (P1.8c–f) and the UI treats missing sections as absent (no card, nothing faked).
+
+- **`sections.other_buys_1000_plus`** — every buy-rated name closing at ₹1000+: same gates and R:R floor as the
+  Top 10, no price cap, max 2 per sector (`diversifyPicks`, verified funda first), never padded. Each item = a
+  Top-10-shaped pick (entry, SL, T1, T2, `rr_t1`, `rr_t2`, `rr_plain`, confidence, sector, flags such as
+  `funda_unknown`) + `reasons_plain[]` (top 3). Names over the sector cap are named in `sector_capped[]` + note.
+  The news pass now also covers the top 6 ₹1000+ buys.
+- **Deep dive back-fill** — Top 10 ranks 1–3 first; if fewer than 3, filled from the full buy set at any price
+  (incl. under ₹50) by the existing ranking (verified funda first → `diversifiedPickScore` → listed Other-buys
+  rank → ticker). No duplicates. Each item carries `source` (`top10` | `other_buys` | `buy_set`) and
+  `source_label` ("from Other buys ₹1000+ (#1)", "from the full buy set (under ₹50)", …).
+- **`sections.breakout_watch`** (always present in v3.2, may be empty with a note) — near-misses only: verdicts
+  that would be buys except resistance under entry + 1R caps T1 (`rr_below_1r`, reason "Resistance at ₹X caps…"),
+  close ₹50+. Trigger = the nearest swing high / 20- / 50-day high above the close that, once cleared by a daily
+  close, leaves no resistance under 1R (`breakoutWatchFor` re-runs `deriveLevels(…, "rr_floor_v3")` with entry at
+  each level; `levels_cleared[]` lists the ones passed). `if_breakout` = the same risk_v3 plan from the trigger
+  (today's ATR, supports, resistance above) or `null` + `if_breakout_note` when it cannot be computed. Ranked by
+  `distance_r` = (trigger − close) / R (R = entry − SL today; `distance_atr` shown too), then ticker; max 6
+  (`BREAKOUT_WATCH_MAX`), `n_candidates` = all near-misses. Label: "watch only — not a buy, no paper buy"; items
+  have no `action` field and never feed paper trading.
+- **Final summary** headline names the Other buys, deep-dive sources and breakout triggers; `counts` add
+  `top10`, `other_buys`, `deep_dive`, `breakout_watch`; `final_summary.other_buys[]`, `breakout_watch[]`.
+- `/report` (`LiveReport.tsx`): new cards "Other buys (₹1000+)" and "Watch for breakout (not buys)", deep-dive
+  source line. Cron route response adds `other_buys` / `breakout_watch` counts.
+- `scripts/report-diagnose.ts` prints a "Coverage" block (Top 10, Other buys with levels, deep-dive sources,
+  breakout watch with triggers, headline). `--inputs` accepts the `{report, inputs}` file it writes.
+
+**Tests.** Lib: P1.8f stored v3.1 re-verifies, no v3.2 sections; P4.1 ₹1000+ buy → Other buys + deep dive
+(synthetic, Top 10 empty); P4.2 back-fill order / no duplicates / 2 per sector; P4.3 breakout watch never
+buy-labelled, trigger > close, ranked, capped; P4.4 banned words (incl. "watch for breakout") + banner +
+determinism. HTTP: P4.0 pre-3.2 report has the new sections absent; P4.1h–P4.4h on v3.2 reports.
+Banned list (`/\brecommendation\b/ /\btips?\b/ /\badvice\b/ /target price/ /guaranteed/ /sure-shot/ /will hit/
+/expected return/ /accuracy proves/`) has nothing that matches "watch for breakout"; the new text avoids "will hit"
+/ "target price".
+
+**Local rebuild 2026-10-08** (`report-diagnose.ts 2026-10-08`, live fetch, no Redis; based on the 7 Oct close,
+complete, 76/76 bars): 1 buy · Top 10 under ₹1000: 0 · Other buys ₹1000+: 1 — SBILIFE (Finance) close/entry
+1726.1, SL 1687.6, T1 1774.4 (swing high), T2 1798.9 (swing high), R:R 1.25 / 1.89, "Risk ₹38.5 to stop, ₹48.3 to
+T1 (1.3R), ₹72.8 to T2 (1.9R)", conf 5, funda=watch (verified), 2 sh ≈ ₹3,452 · Deep dive: 1 — SBILIFE (from Other
+buys) · Watch for breakout: 6 of 8 near-misses — HEROMOTOCO > ₹5073.4 (0.59R), AXISBANK > ₹1258.9 (0.68R),
+DRREDDY > ₹1222 (0.79R), KOTAKBANK > ₹453.2 (1.02R), BANKBARODA > ₹239.46 (1.13R), HDFCLIFE > ₹567.4 (1.49R);
+not shown: ICICIBANK, BHARTIARTL.

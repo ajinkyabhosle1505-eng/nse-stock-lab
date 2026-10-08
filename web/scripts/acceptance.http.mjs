@@ -74,7 +74,10 @@ if (L.report) {
   check("P1.13 top10", S.top10_under_1000.items.length <= 10 && S.top10_under_1000.items.every((p) => p.cmp < 1000 && p.cmp >= 50));
   check("P1.11 banned words + banner", banned(L).length === 0 && L.sebi_banner === SEBI && L.report.sebi_banner === SEBI, banned(L).join(","));
   // report_v3.1: versions + stale index labels (older stored reports have neither; the UI labels them at render time)
-  const v31 = /^report_v3\.1\|/.test(L.report.method_version || "");
+  const mv = (L.report.method_version || "").match(/^report_v(\d+)(?:\.(\d+))?\|/);
+  const ver = mv ? Number(mv[1]) * 100 + Number(mv[2] || 0) : 0;
+  const v31 = ver >= 301;
+  const v32 = ver >= 302;
   const vers = Array.isArray(L.versions) ? L.versions : [];
   check("P3.1a versions envelope", vers.length >= 1 && L.report_version === (L.report.version ?? 1) && vers[vers.length - 1].report_hash === L.report.report_hash, `report_version=${L.report_version} versions=${vers.map((v) => `${v.version}:${v.status}`).join(",")} method=${L.report.method_version}`);
   const idxRows = S.market_overview.indices;
@@ -82,6 +85,22 @@ if (L.report) {
   check("P3.3a stale index rows labelled (v3.1)", !v31 || (staleRows.every((i) => i.stale === true && /^Index data (as of \d{1,2} \w{3}|UNKNOWN) \(Yahoo had no \d{1,2} \w{3} bar\)$/.test(i.as_of_label || "")) && (L.report.status === "partial" || staleRows.length === 0)),
     `${v31 ? "" : "pre-3.1 report (label computed in UI) · "}${idxRows.map((i) => `${i.symbol}@${i.bar_date}${i.as_of_label ? ` [${i.as_of_label}]` : ""}`).join(" ")}`);
   check("P3.1b partial lists missing bars (v3.1)", !v31 || L.report.status !== "partial" || (Array.isArray(L.report.incomplete?.missing_bars) && typeof L.partial_note === "string"), `${L.report.status} missing=${(L.report.incomplete?.missing_bars || []).map((m) => m.symbol).join(",")}`);
+  // report_v3.2: Other buys (₹1000+) + deep-dive sources + Watch for breakout. Older stored reports have
+  // none of these → must be ABSENT (not faked); the UI then simply omits those cards.
+  const OB = S.other_buys_1000_plus;
+  const BW = S.breakout_watch;
+  if (!v32) {
+    check("P4.0 pre-3.2 report: new sections absent (not faked)", OB === undefined && BW === undefined && !("other_buys" in S.final_summary) && S.deep_dive_top3.items.every((d) => !("source" in d)), `method ${L.report.method_version}`);
+  } else {
+    const secN = {};
+    (OB?.items || []).forEach((p) => (secN[p.sector || "?"] = (secN[p.sector || "?"] || 0) + 1));
+    check("P4.1h Other buys ₹1000+ (buy, ≥₹1000, R:R floor, ≤2/sector)", !!OB && OB.items.every((p) => p.action === "buy" && p.cmp >= 1000 && p.rr_t1 >= 1 && p.rr_t2 >= 1.8 && typeof p.rr_plain === "string") && Object.values(secN).every((n) => n <= 2), `${OB?.items.map((p) => `${p.ticker}@${p.cmp}`).join(",") || "none"}`);
+    const dk = S.deep_dive_top3.items.map((d) => d.ticker);
+    check("P4.2h deep dive: ≤3, no duplicates, source marked", dk.length <= 3 && new Set(dk).size === dk.length && S.deep_dive_top3.items.every((d) => ["top10", "other_buys", "buy_set"].includes(d.source) && typeof d.source_label === "string"), S.deep_dive_top3.items.map((d) => `${d.ticker} (${d.source_label})`).join(", ") || "none");
+    const buyNames = new Set([...S.top10_under_1000.items, ...(OB?.items || []), ...S.deep_dive_top3.items].map((p) => p.ticker));
+    check("P4.3h Watch for breakout: never buy-labelled, trigger above close", !!BW && BW.items.length <= 8 && BW.items.every((w) => !("action" in w) && /not a buy/.test(w.label) && w.trigger > w.cmp && /^Watch for a daily close above ₹/.test(w.trigger_text) && !buyNames.has(w.ticker)) && typeof BW.rule === "string", `${BW?.items.map((w) => `${w.ticker}>${w.trigger}`).join(", ") || "none"} of ${BW?.n_candidates}`);
+    check("P4.4h summary mentions Other buys + breakout watch", /Other buys/.test(S.final_summary.headline) && /Watch for breakout/.test(S.final_summary.headline), S.final_summary.headline.slice(0, 160));
+  }
   const dv1 = await call(`/api/report/${L.report.for_session}?version=1`);
   check("P3.1c ?version=1 audit read", dv1.status === 200 && dv1.json.report?.for_session === L.report.for_session && (dv1.json.report?.version ?? 1) === 1, `${dv1.status} ${dv1.json.report?.key}`);
 }

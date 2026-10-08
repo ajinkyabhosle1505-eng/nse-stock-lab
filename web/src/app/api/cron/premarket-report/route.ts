@@ -36,7 +36,7 @@ async function handle(req: NextRequest) {
       ...(res.noop ? { noop: true } : {}),
       ...(res.error ? { error: res.error } : {}),
       report: r
-        ? { key: r.key, version: r.version ?? 1, status: r.status, based_on_close: r.based_on_close, report_hash: r.report_hash, inputs_hash: r.inputs_hash, top10: r.sections.top10_under_1000.items.length, unknowns: r.unknowns.length, missing_bars: r.incomplete?.missing_bars.map((m) => m.symbol) ?? null, data_fills: r.data_fills?.map((f) => `${f.symbol}:${f.close_source}`) ?? null }
+        ? { key: r.key, version: r.version ?? 1, status: r.status, based_on_close: r.based_on_close, report_hash: r.report_hash, inputs_hash: r.inputs_hash, top10: r.sections.top10_under_1000.items.length, other_buys: r.sections.other_buys_1000_plus?.items.length ?? null, breakout_watch: r.sections.breakout_watch?.items.length ?? null, unknowns: r.unknowns.length, missing_bars: r.incomplete?.missing_bars.map((m) => m.symbol) ?? null, data_fills: r.data_fills?.map((f) => `${f.symbol}:${f.close_source}`) ?? null }
         : null,
       detail: res.detail ?? null,
       sebi_banner: SEBI_BANNER,

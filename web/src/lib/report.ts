@@ -21,8 +21,8 @@ import { BhavFetcher, type CloseSource } from "./bhavcopy";
 import { computeTech } from "./tech";
 import { fetchLiveFunda } from "./funda";
 import { fetchLiveNews, fetchMarketHeadlines, type NewsItem } from "./news";
-import { mergeVerdict, sizePosition, type LaneStub, type LevelPolicy } from "./risk";
-import { rrPlain } from "./rr";
+import { deriveLevels, mergeVerdict, overheadResistance, sizePosition, type LaneStub, type LevelPolicy } from "./risk";
+import { rrOf, rrPlain } from "./rr";
 import { diversifiedPickScore, diversifyPicks, mapPool } from "./live";
 import { plainReason } from "./plain";
 import { buildForecastBundle } from "./forecast";
@@ -38,7 +38,7 @@ import {
 import { canonicalJSON, sha256hex } from "./hash";
 import { barAsOf, indexAsOf, shortDay } from "./staleLabel";
 import type { ForecastMethod, TechFields, TechLane, Verdict } from "./types";
-import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
+import type { BreakoutWatch, DeepSource, Lane, LaneStat, OtherBuy, ReportPick, ReportV1 } from "./reportTypes";
 
 /**
  * report_v2|risk_v2 (2026-09-25): funda that is missing (Screener blocked / not
@@ -63,7 +63,15 @@ import type { Lane, LaneStat, ReportPick, ReportV1 } from "./reportTypes";
  * `close_source`. Index numbers older than based_on_close carry an "as of" label.
  * Levels / gates are unchanged from v3 (same risk_v3, same paper method).
  */
-export const METHOD_VERSION = "report_v3.1|risk_v3|atr_piecewise_T1_T2_v2";
+/**
+ * report_v3.2 (2026-10-08): coverage when the Top 10 under ₹1000 is thin. New sections
+ * "Other buys (₹1000+)" (same gates, no price cap, 2 per sector, never padded) and
+ * "Watch for breakout" (near-misses capped by resistance under 1R — never a buy), and the
+ * deep dive back-fills from the full buy set (any price, existing ranking, source marked)
+ * when the Top 10 has fewer than 3. The news pass also covers the top ₹1000+ buys.
+ * Gates / levels are unchanged (risk_v3); stored ≤3.1 reports re-verify with their own shape.
+ */
+export const METHOD_VERSION = "report_v3.2|risk_v3|atr_piecewise_T1_T2_v2";
 /** [major, minor] of a report method string ("report_v3.1|…" → [3, 1]). */
 export function reportVersionOf(method: string = METHOD_VERSION): [number, number] {
   const m = method.match(/^report_v(\d+)(?:\.(\d+))?\|/);
@@ -74,6 +82,12 @@ export function dataGapRules(method: string = METHOD_VERSION): boolean {
   const [a, b] = reportVersionOf(method);
   return a > 3 || (a === 3 && b >= 1);
 }
+/** report_v3.2+: Other buys (₹1000+), deep-dive back-fill, Watch for breakout. */
+export function coverageRules(method: string = METHOD_VERSION): boolean {
+  const [a, b] = reportVersionOf(method);
+  return a > 3 || (a === 3 && b >= 2);
+}
+export const BREAKOUT_WATCH_MAX = 6;
 export function fundaGapPolicy(method: string = METHOD_VERSION): "avoid" | "unknown" {
   return method.startsWith("report_v1|") ? "avoid" : "unknown";
 }
@@ -196,6 +210,73 @@ function isDataGapFunda(f: SymbolInput["funda"]): boolean {
   return Array.isArray(rf) && rf.some((x) => /Heavy unknowns|No live funda/i.test(String(x)));
 }
 
+// ---------------------------------------------------------------- v3.2 breakout watch (pure)
+const BW_LABEL = "watch only — not a buy, no paper buy" as const;
+
+/**
+ * Near-miss → trigger + (when computable) the plan from the trigger. The trigger is the nearest
+ * overhead level (swing high / 20- / 50-day high) such that, with entry at that level, the same
+ * risk_v3 rules find no resistance under 1R. The plan re-uses today's ATR, supports and the
+ * resistance above the trigger (no new data is assumed). null if there is no level above the close.
+ */
+export function breakoutWatchFor(s: SymbolInput, v: Verdict): BreakoutWatch | null {
+  if (!s.tech || v.entry == null || v.sl == null || !v.resistance_cap) return null;
+  const lane = techLane(s);
+  const entry = v.entry;
+  const R = entry - v.sl;
+  if (!(R > 0)) return null;
+  const res = overheadResistance(lane, entry).filter((r) => r.price >= v.resistance_cap!.price);
+  if (!res.length) return null;
+  let trigger = res[0];
+  let plan: ReturnType<typeof deriveLevels> | null = null;
+  for (const lvl of res) {
+    const at = deriveLevels({ ...lane, fields: { ...lane.fields, cmp: lvl.price } }, "rr_floor_v3");
+    trigger = lvl;
+    if (at.sl != null && at.entry != null && at.entry - at.sl > 0 && at.targets.length && !at.cap) {
+      plan = at;
+      break;
+    }
+    plan = null;
+  }
+  if (!(trigger.price > entry)) return null;
+  const atr = typeof s.tech.atr_14 === "number" && s.tech.atr_14 > 0 ? s.tech.atr_14 : null;
+  const cleared = overheadResistance(lane, entry).filter((r) => r.price <= trigger.price).map((r) => ({ price: r.price, source: r.source }));
+  const ifB =
+    plan && plan.entry != null && plan.sl != null
+      ? {
+          entry: plan.entry,
+          sl: plan.sl,
+          t1: plan.targets[0],
+          t2: plan.targets[1] ?? null,
+          rr_t1: rrOf(plan.entry, plan.sl, plan.targets[0]),
+          rr_t2: rrOf(plan.entry, plan.sl, plan.targets[1]),
+          rr_plain: rrPlain(plan.entry, plan.sl, plan.targets[0], plan.targets[1]) ?? "R:R UNKNOWN",
+          t1_basis: plan.t1_basis ?? null,
+          t2_basis: plan.t2_basis ?? null,
+          note: "Only if a daily close above the trigger: same risk_v3 rules with entry ≈ the trigger, using today's ATR, supports and the resistance above it. Gates are re-checked on that day; not a buy now.",
+        }
+      : null;
+  return {
+    rank: 0,
+    ticker: s.ticker,
+    sector: v.sector || null,
+    cmp: entry,
+    label: BW_LABEL,
+    trigger: trigger.price,
+    trigger_source: trigger.source,
+    trigger_text: `Watch for a daily close above ₹${trigger.price} (${trigger.source}${cleared.length > 1 ? `; also clears ${cleared.slice(0, -1).map((c) => `₹${c.price}`).join(", ")}` : ""})`,
+    levels_cleared: cleared,
+    distance_r: r2((trigger.price - entry) / R),
+    distance_atr: atr != null ? r2((trigger.price - entry) / atr) : null,
+    risk_per_share: r2(R),
+    rr_to_resistance: v.resistance_cap.rr,
+    if_breakout: ifB,
+    ...(ifB ? {} : { if_breakout_note: "Plan from the trigger cannot be computed from today's levels — trigger only." }),
+    risk_flags: v.risk_flags || [],
+    bar_date: s.bar?.date || "UNKNOWN",
+  };
+}
+
 // ---------------------------------------------------------------- sections (pure)
 export function buildSections(
   inp: ReportInputs,
@@ -226,10 +307,10 @@ export function buildSections(
     10,
     { verifiedFirst: v3 }
   );
-  const picks: ReportPick[] = top.map((v, i) => {
+  const toPick = (v: Verdict, rank: number): ReportPick => {
     const sized = sizePosition({ budget_inr: BUDGET_INR, risk_pct: RISK_PCT, entry: v.entry!, sl: v.sl! });
     return {
-      rank: i + 1,
+      rank,
       ticker: v.ticker,
       sector: v.sector || null,
       cmp: cmpOf(v),
@@ -266,7 +347,22 @@ export function buildSections(
           }
         : {}),
     };
-  });
+  };
+  const picks: ReportPick[] = top.map((v, i) => toPick(v, i + 1));
+  const cov = coverageRules(method);
+
+  // v3.2: Other buys (₹1000+) — same gates as the Top 10 except the price cap; 2 per sector; never padded.
+  const otherAll = cov
+    ? rows.filter(({ v }) => v.action === "buy" && cmpOf(v) >= 1000 && v.entry != null && v.sl != null).map(({ v }) => v)
+    : [];
+  const otherTop = cov
+    ? diversifyPicks([...otherAll].sort((a, b) => diversifiedPickScore(b) - diversifiedPickScore(a)), BUDGET_INR, otherAll.length, { verifiedFirst: v3 })
+    : [];
+  const otherBuys: OtherBuy[] = otherTop.map((v, i) => ({
+    ...toPick(v, i + 1),
+    reasons_plain: (v.reasons || []).slice(0, 3).map((x) => plainReason(String(x))),
+  }));
+  const otherCapped = otherAll.filter((v) => !otherTop.some((o) => o.ticker === v.ticker)).map((v) => v.ticker).sort();
 
   // v3: names whose tape passed but real resistance caps T1 under 1R (downgraded to hold).
   const rrCapped = v3
@@ -285,7 +381,50 @@ export function buildSections(
         .sort((a, b) => a.ticker.localeCompare(b.ticker))
     : [];
 
-  const deep = picks.slice(0, 3).map((p) => {
+  // v3.2: Watch for breakout — near-misses (would be buys, but resistance under entry + 1R caps T1).
+  // Never a buy, never paper-bought. Pure function of the stored inputs → deterministic.
+  const bwCands: BreakoutWatch[] = [];
+  if (cov && v3) {
+    for (const { s, v } of rows) {
+      if (v.action === "buy" || !v.resistance_cap || !/^Resistance at ₹/.test(String(v.reasons?.[0] || ""))) continue;
+      if (v.entry == null || v.sl == null || cmpOf(v) < 50) continue;
+      const w = breakoutWatchFor(s, v);
+      if (w) bwCands.push(w);
+    }
+    bwCands.sort((a, b) => a.distance_r - b.distance_r || a.ticker.localeCompare(b.ticker));
+  }
+  const breakoutWatch = bwCands.slice(0, BREAKOUT_WATCH_MAX).map((w, i) => ({ ...w, rank: i + 1 }));
+
+  // v3.2: deep dive = Top 10 ranks 1–3, back-filled (when the Top 10 has < 3) from the full buy
+  // set at any price, by the existing ranking (verified funda first, then pick score, then ticker).
+  const deepSel: { p: ReportPick; source: DeepSource; label: string }[] = picks.slice(0, 3).map((p) => ({ p, source: "top10", label: `from Top 10 (#${p.rank})` }));
+  if (cov && deepSel.length < 3) {
+    const isUnk = (v: Verdict) => (v.risk_flags?.includes("funda_unknown") ? 1 : 0);
+    // ties keep the order the names are listed in (Other buys rank), then ticker
+    const listedAt = (v: Verdict) => {
+      const i = otherBuys.findIndex((o) => o.ticker === v.ticker);
+      return i < 0 ? 1e6 : i;
+    };
+    const pool = rows
+      .filter(({ v }) => v.action === "buy" && v.entry != null && v.sl != null && !deepSel.some((d) => d.p.ticker === v.ticker))
+      .map(({ v }) => v)
+      .sort((a, b) => isUnk(a) - isUnk(b) || diversifiedPickScore(b) - diversifiedPickScore(a) || listedAt(a) - listedAt(b) || a.ticker.localeCompare(b.ticker));
+    for (const v of pool) {
+      if (deepSel.length >= 3) break;
+      if (deepSel.some((d) => d.p.ticker === v.ticker)) continue;
+      const ob = otherBuys.find((o) => o.ticker === v.ticker);
+      if (ob) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { reasons_plain, ...p } = ob;
+        deepSel.push({ p, source: "other_buys", label: `from Other buys ₹1000+ (#${ob.rank})` });
+      } else {
+        const why = cmpOf(v) < 50 ? "under ₹50" : cmpOf(v) >= 1000 ? "₹1000+, over the per-sector cap" : "under ₹1000, over the per-sector cap";
+        deepSel.push({ p: toPick(v, 0), source: "buy_set", label: `from the full buy set (${why})` });
+      }
+    }
+  }
+  const deep = deepSel.map(({ p: p0, source, label }, di) => {
+    const p = cov ? { ...p0, rank: di + 1, source, source_label: label } : p0;
     const s = inp.symbols[p.ticker];
     const t = s.tech!;
     const bundle = buildForecastBundle({
@@ -429,9 +568,49 @@ export function buildSections(
         items: picks,
         n_eligible: eligible,
         ...(v3 ? { rr_capped: rrCapped } : {}),
-        ...(picks.length < 10 ? { note: `Only ${picks.length} names passed gates today (max ${MAX_PER_SECTOR} per sector; not padded).` } : {}),
+        ...(picks.length < 10
+          ? {
+              note:
+                cov && !picks.length && otherBuys.length
+                  ? `No name under ₹1000 passed gates today (not padded). ${otherBuys.length} buy-rated name${otherBuys.length === 1 ? "" : "s"} priced ₹1000+ ${otherBuys.length === 1 ? "is" : "are"} listed under Other buys.`
+                  : `Only ${picks.length} names passed gates today (max ${MAX_PER_SECTOR} per sector; not padded).${cov && otherBuys.length ? ` ${otherBuys.length} more priced ₹1000+ under Other buys.` : ""}`,
+            }
+          : {}),
       },
-      deep_dive_top3: { items: deep, ...(deep.length ? {} : { note: "No paper setups passed gates — nothing to deep-dive." }) },
+      ...(cov
+        ? {
+            other_buys_1000_plus: {
+              items: otherBuys,
+              n_eligible: otherAll.length,
+              sector_capped: otherCapped,
+              rule: `Buy-rated names closing at ₹1000 or more: same gates and R:R floor as the Top 10 (T1 ≥ 1R, T2 ≥ 1.8R), no price cap, max ${MAX_PER_SECTOR} per sector, verified fundamentals listed first; not padded.`,
+              ...(otherBuys.length
+                ? otherCapped.length
+                  ? { note: `Also buy-rated but over the ${MAX_PER_SECTOR}-per-sector cap: ${otherCapped.join(", ")}.` }
+                  : {}
+                : { note: "No buy-rated name priced ₹1000+ today — none invented." }),
+            },
+          }
+        : {}),
+      deep_dive_top3: {
+        items: deep,
+        ...(deep.length
+          ? cov && deep.some((d) => "source" in d && d.source !== "top10")
+            ? { note: `Top 10 had ${picks.length} name${picks.length === 1 ? "" : "s"}; the rest are filled from the full buy set (any price) by the same ranking — source shown on each.` }
+            : {}
+          : { note: cov ? "No paper setups passed gates at any price — nothing to deep-dive. See Watch for breakout." : "No paper setups passed gates — nothing to deep-dive." }),
+      },
+      ...(cov
+        ? {
+            breakout_watch: {
+              items: breakoutWatch,
+              n_candidates: bwCands.length,
+              label: "Watch for breakout — names to watch, NOT buys and NOT paper-bought. Each would pass our gates today except that resistance caps T1 below 1R.",
+              rule: `Near-misses only (tape and fundamentals pass, flag rr_below_1r, close ₹50+). Trigger = the nearest swing high / 20- / 50-day high above the close that, once cleared by a daily close, leaves no resistance under 1R. Ranked by distance from the close to the trigger in R (R = entry − SL today), nearest first, then ticker; max ${BREAKOUT_WATCH_MAX} shown of ${bwCands.length}.`,
+              ...(breakoutWatch.length ? {} : { note: "No near-miss capped by resistance today — none invented." }),
+            },
+          }
+        : {}),
       avoids5: { items: avoids, ...(avoids.length < 5 ? { note: `Only ${avoids.length} names met the skip rules (not padded).` } : {}) },
       penny_under_50: {
         items: pennies,
@@ -439,7 +618,10 @@ export function buildSections(
         ...(pennies.length ? {} : { note: "No scanned name closed under ₹50 with usable data — none invented." }),
       },
       final_summary: {
-        counts: { scanned: scannedN, ok, unknown: scannedN - ok, buy: count("buy"), hold: count("hold"), avoid: count("avoid") },
+        counts: {
+          scanned: scannedN, ok, unknown: scannedN - ok, buy: count("buy"), hold: count("hold"), avoid: count("avoid"),
+          ...(cov ? { top10: picks.length, other_buys: otherBuys.length, deep_dive: deep.length, breakout_watch: breakoutWatch.length } : {}),
+        },
         top3: deep.map((d) => d.ticker),
         changes_vs_prev: {
           prev_key: prev?.key ?? null,
@@ -448,7 +630,16 @@ export function buildSections(
           avoids_in: prev ? diff(nowAv, prevAv) : [],
           avoids_out: prev ? diff(prevAv, nowAv) : [],
         },
-        headline: `${niftyTxt}. ${ok}/${scannedN} names with usable data: ${count("buy")} paper setups (${picks.length} in Top 10 under ₹1000), ${count("hold")} hold, ${count("avoid")} skip.${deep.length ? ` Deep dive: ${deep.map((d) => d.ticker).join(", ")}.` : ""}`,
+        headline: cov
+          ? `${niftyTxt}. ${ok}/${scannedN} names with usable data: ${count("buy")} paper setup${count("buy") === 1 ? "" : "s"} (${picks.length} in Top 10 under ₹1000, ${otherBuys.length} in Other buys ₹1000+${otherBuys.length ? `: ${otherBuys.map((o) => o.ticker).join(", ")}` : ""}), ${count("hold")} hold, ${count("avoid")} skip.${
+              deep.length ? ` Deep dive: ${deepSel.map((d) => `${d.p.ticker} (${d.source === "top10" ? "Top 10" : d.source === "other_buys" ? "Other buys" : "buy set"})`).join(", ")}.` : " No deep dive (no paper setup at any price)."
+            }${
+              breakoutWatch.length
+                ? ` Watch for breakout (not buys): ${breakoutWatch.map((w) => `${w.ticker} above ₹${w.trigger}`).join(", ")}${bwCands.length > breakoutWatch.length ? ` (+${bwCands.length - breakoutWatch.length} more)` : ""}.`
+                : " Watch for breakout: none today."
+            }`
+          : `${niftyTxt}. ${ok}/${scannedN} names with usable data: ${count("buy")} paper setups (${picks.length} in Top 10 under ₹1000), ${count("hold")} hold, ${count("avoid")} skip.${deep.length ? ` Deep dive: ${deep.map((d) => d.ticker).join(", ")}.` : ""}`,
+        ...(cov ? { other_buys: otherBuys.map((o) => o.ticker), breakout_watch: breakoutWatch.map((w) => w.ticker) } : {}),
       },
     },
   };
@@ -722,6 +913,8 @@ export async function generateReport(opts: GenerateOpts): Promise<GenerateResult
     .filter((x) => x.v && typeof x.v.cmp === "number");
   const shortlist = new Set<string>();
   pre.filter((x) => x.v!.action === "buy" && (x.v!.cmp as number) < 1000).sort((a, b) => diversifiedPickScore(b.v!) - diversifiedPickScore(a.v!)).slice(0, 14).forEach((x) => shortlist.add(x.t));
+  // v3.2: the top ₹1000+ buys get news too (Other buys / deep-dive back-fill)
+  if (coverageRules()) pre.filter((x) => x.v!.action === "buy" && (x.v!.cmp as number) >= 1000).sort((a, b) => diversifiedPickScore(b.v!) - diversifiedPickScore(a.v!) || a.t.localeCompare(b.t)).slice(0, 6).forEach((x) => shortlist.add(x.t));
   pre.filter((x) => x.v!.action === "avoid").slice(0, 3).forEach((x) => shortlist.add(x.t));
   pre.filter((x) => (x.v!.cmp as number) < 50).slice(0, 3).forEach((x) => shortlist.add(x.t));
   lanes.news.skipped = pre.length - shortlist.size;

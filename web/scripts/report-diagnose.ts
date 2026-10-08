@@ -5,6 +5,8 @@
  *   npx tsx --tsconfig tsconfig.json scripts/report-diagnose.ts --inputs saved.json   (offline, pure rebuild)
  * Also prints (report_v3.1) the missing based_on_close bars, official-file fills (close_source)
  * and the "as of" label of every index. BHAVCOPY_FALLBACK=0 disables the official-file fill.
+ * report_v3.2: also prints Other buys (₹1000+), deep-dive sources and the Watch-for-breakout list.
+ * `--inputs` accepts either a bare inputs JSON or the `{ report, inputs }` file this script writes.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { generateReport, buildSections, verdictFor, METHOD_VERSION, type ReportInputs } from "../src/lib/report";
@@ -40,13 +42,30 @@ function rrCompare(inputs: ReportInputs) {
   if (added.length) console.log(`  New buys under v3: ${added.join(", ")}`);
 }
 
+/** report_v3.2 coverage view: Top 10, Other buys (₹1000+), deep-dive sources, Watch for breakout. */
+function coverage(inputs: ReportInputs) {
+  const S = buildSections(inputs, null, METHOD_VERSION).sections;
+  const ob = S.other_buys_1000_plus;
+  const bw = S.breakout_watch;
+  console.log(`\nCoverage (${METHOD_VERSION}, based_on_close ${inputs.based_on_close})`);
+  console.log(`  Top 10 under ₹1000: ${S.top10_under_1000.items.length}${S.top10_under_1000.note ? ` — ${S.top10_under_1000.note}` : ""}`);
+  console.log(`  Other buys ₹1000+: ${ob?.items.length ?? "absent"} (eligible ${ob?.n_eligible ?? "-"}${ob?.sector_capped.length ? `, sector-capped ${ob.sector_capped.join(",")}` : ""})`);
+  for (const p of ob?.items || []) console.log(`    ${p.rank}. ${p.ticker} ${p.sector} close ${p.cmp} · entry ${p.entry} SL ${p.sl} T1 ${p.t1} T2 ${p.t2} · R:R ${p.rr_t1}/${p.rr_t2} · ${p.rr_plain} · conf ${p.confidence_1_10} · flags ${p.risk_flags.join(",") || "-"} · ${p.reasons_plain.join(" | ")}`);
+  console.log(`  Deep dive: ${S.deep_dive_top3.items.length}`);
+  for (const d of S.deep_dive_top3.items) console.log(`    ${d.rank}. ${d.ticker} — ${d.source_label ?? d.source ?? "Top 10"}`);
+  console.log(`  Watch for breakout: ${bw?.items.length ?? "absent"} of ${bw?.n_candidates ?? "-"} near-misses`);
+  for (const w of bw?.items || []) console.log(`    ${w.rank}. ${w.ticker} close ${w.cmp} · ${w.trigger_text} · ${w.distance_r}R / ${w.distance_atr ?? "UNKNOWN"} ATR away · ${w.if_breakout ? `if breakout: entry ${w.if_breakout.entry} SL ${w.if_breakout.sl} T1 ${w.if_breakout.t1} T2 ${w.if_breakout.t2} · ${w.if_breakout.rr_plain} (T1 ${w.if_breakout.t1_basis})` : w.if_breakout_note}`);
+  console.log(`  Summary: ${S.final_summary.headline}`);
+}
+
 async function main() {
   const args = process.argv.slice(2);
   let inputs: ReportInputs;
   let unknowns: { ticker: string; lane: string; reason: string }[] = [];
   let top10: string[] = [];
   if (args[0] === "--inputs") {
-    inputs = JSON.parse(readFileSync(args[1], "utf8"));
+    const raw = JSON.parse(readFileSync(args[1], "utf8"));
+    inputs = raw.inputs && raw.report ? raw.inputs : raw;
     const { sections, unknownsFromData } = buildSections(inputs, null);
     top10 = sections.top10_under_1000.items.map((p) => p.ticker);
     unknowns = unknownsFromData;
@@ -69,6 +88,7 @@ async function main() {
     if (args[1]) writeFileSync(args[1], JSON.stringify({ report: gen.report, inputs }, null, 1));
   }
   rrCompare(inputs);
+  coverage(inputs);
   const byReason = new Map<string, string[]>();
   for (const u of unknowns) {
     const k = `${u.lane}: ${u.reason.replace(/\(last .*\)/, "").trim()}`;
