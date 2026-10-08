@@ -229,3 +229,7 @@ T1 (1.3R), ₹72.8 to T2 (1.9R)", conf 5, funda=watch (verified), 2 sh ≈ ₹3,
 buys) · Watch for breakout: 6 of 8 near-misses — HEROMOTOCO > ₹5073.4 (0.59R), AXISBANK > ₹1258.9 (0.68R),
 DRREDDY > ₹1222 (0.79R), KOTAKBANK > ₹453.2 (1.02R), BANKBARODA > ₹239.46 (1.13R), HDFCLIFE > ₹567.4 (1.49R);
 not shown: ICICIBANK, BHARTIARTL.
+
+Shipped in `f6e6386` (Vercel success). Tests: build OK · lib 40/40 · HTTP local (mock DB) 32/32 · HTTP production
+21/21 (P4.0: the stored 2026-10-08 report, `report:2026-10-08:v2`, report_v3.1, has the new sections absent and
+/report renders it without the new cards). The first v3.2 report will be the 2026-10-09 one.
