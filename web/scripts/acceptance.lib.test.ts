@@ -198,6 +198,23 @@ async function main() {
       obMix.items.filter((p) => p.sector === "Finance").length === 2 && obMix.sector_capped.length === 1 && obMix.n_eligible === 4 && obMix.items.length === 3,
     `deep ${sMix.deep_dive_top3.items.map((d) => `${d.ticker}:${d.source}`).join(", ")} · other ${obMix.items.map((p) => p.ticker).join(",")} capped ${obMix.sector_capped.join(",")} · live deep ${rep.sections.deep_dive_top3.items.map((d) => `${d.ticker}:${d.source}`).join(",") || "none"}`
   );
+  // Penny buys (< ₹50) never back-fill the deep dive; they stay in the penny section.
+  // pennies need an exceptional tape (breakout above DMAs, RSI 55–70) to be buy-rated at all
+  const pennySym = (t: string, cmp: number, sec: string): SymbolInput => {
+    const x = synthSym(t, cmp, sec);
+    return { ...x, tech: { ...x.tech!, breakout_state: "breakout" } as SymbolInput["tech"] };
+  };
+  const pennyIn = synthInputs([pennySym("PENA", 40, "Banks"), pennySym("PENB", 30, "Energy"), synthSym("BIGA", 1726.1, "Finance")]);
+  const sPen = assembleReport(pennyIn, null, meta0).sections;
+  const pennyBuys = ["PENA", "PENB"].filter((t) => verdictFor(pennyIn.symbols[t])?.action === "buy");
+  const deepAllOk = (items: { cmp: number }[]) => items.every((d) => d.cmp >= 50);
+  check(
+    "P4.2b penny buys never back-fill the deep dive (still in the penny section)",
+    pennyBuys.length === 2 && sPen.top10_under_1000.items.length === 0 && sPen.deep_dive_top3.items.map((d) => d.ticker).join(",") === "BIGA" &&
+      ["PENA", "PENB"].every((t) => sPen.penny_under_50.items.some((p) => p.ticker === t && p.action === "buy")) &&
+      deepAllOk(sPen.deep_dive_top3.items) && deepAllOk(sNo.deep_dive_top3.items) && deepAllOk(sMix.deep_dive_top3.items) && deepAllOk(rep.sections.deep_dive_top3.items),
+    `penny buys ${pennyBuys.join(",")} · deep ${sPen.deep_dive_top3.items.map((d) => `${d.ticker}@${d.cmp}:${d.source}`).join(",")} · live deep ${rep.sections.deep_dive_top3.items.map((d) => `${d.ticker}@${d.cmp}`).join(",") || "none"}`
+  );
   const bwAll = [...(sNo.breakout_watch?.items || []), ...(rep.sections.breakout_watch?.items || [])];
   const buyish = new Set([...sNo.top10_under_1000.items, ...ob1.items, ...sNo.deep_dive_top3.items].map((p) => p.ticker));
   const bwOk =

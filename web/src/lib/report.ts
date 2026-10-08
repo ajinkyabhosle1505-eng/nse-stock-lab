@@ -396,7 +396,8 @@ export function buildSections(
   const breakoutWatch = bwCands.slice(0, BREAKOUT_WATCH_MAX).map((w, i) => ({ ...w, rank: i + 1 }));
 
   // v3.2: deep dive = Top 10 ranks 1–3, back-filled (when the Top 10 has < 3) from the full buy
-  // set at any price, by the existing ranking (verified funda first, then pick score, then ticker).
+  // set at any price from ₹50 up (never pennies), by the existing ranking (verified funda first,
+  // then pick score, then listed Other-buys rank, then ticker).
   const deepSel: { p: ReportPick; source: DeepSource; label: string }[] = picks.slice(0, 3).map((p) => ({ p, source: "top10", label: `from Top 10 (#${p.rank})` }));
   if (cov && deepSel.length < 3) {
     const isUnk = (v: Verdict) => (v.risk_flags?.includes("funda_unknown") ? 1 : 0);
@@ -406,7 +407,8 @@ export function buildSections(
       return i < 0 ? 1e6 : i;
     };
     const pool = rows
-      .filter(({ v }) => v.action === "buy" && v.entry != null && v.sl != null && !deepSel.some((d) => d.p.ticker === v.ticker))
+      // no pennies: buys under ₹50 stay in their own section and never back-fill the deep dive
+      .filter(({ v }) => v.action === "buy" && cmpOf(v) >= 50 && v.entry != null && v.sl != null && !deepSel.some((d) => d.p.ticker === v.ticker))
       .map(({ v }) => v)
       .sort((a, b) => isUnk(a) - isUnk(b) || diversifiedPickScore(b) - diversifiedPickScore(a) || listedAt(a) - listedAt(b) || a.ticker.localeCompare(b.ticker));
     for (const v of pool) {
@@ -418,7 +420,7 @@ export function buildSections(
         const { reasons_plain, ...p } = ob;
         deepSel.push({ p, source: "other_buys", label: `from Other buys ₹1000+ (#${ob.rank})` });
       } else {
-        const why = cmpOf(v) < 50 ? "under ₹50" : cmpOf(v) >= 1000 ? "₹1000+, over the per-sector cap" : "under ₹1000, over the per-sector cap";
+        const why = cmpOf(v) >= 1000 ? "₹1000+, over the per-sector cap" : "under ₹1000, over the per-sector cap";
         deepSel.push({ p: toPick(v, 0), source: "buy_set", label: `from the full buy set (${why})` });
       }
     }
@@ -596,7 +598,7 @@ export function buildSections(
         items: deep,
         ...(deep.length
           ? cov && deep.some((d) => "source" in d && d.source !== "top10")
-            ? { note: `Top 10 had ${picks.length} name${picks.length === 1 ? "" : "s"}; the rest are filled from the full buy set (any price) by the same ranking — source shown on each.` }
+            ? { note: `Top 10 had ${picks.length} name${picks.length === 1 ? "" : "s"}; the rest are filled from the full buy set (any price from ₹50; never under ₹50) by the same ranking — source shown on each.` }
             : {}
           : { note: cov ? "No paper setups passed gates at any price — nothing to deep-dive. See Watch for breakout." : "No paper setups passed gates — nothing to deep-dive." }),
       },

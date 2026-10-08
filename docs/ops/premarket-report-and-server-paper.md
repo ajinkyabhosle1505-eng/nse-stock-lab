@@ -195,9 +195,10 @@ own shape (P1.8c–f) and the UI treats missing sections as absent (no card, not
   `funda_unknown`) + `reasons_plain[]` (top 3). Names over the sector cap are named in `sector_capped[]` + note.
   The news pass now also covers the top 6 ₹1000+ buys.
 - **Deep dive back-fill** — Top 10 ranks 1–3 first; if fewer than 3, filled from the full buy set at any price
-  (incl. under ₹50) by the existing ranking (verified funda first → `diversifiedPickScore` → listed Other-buys
+  from ₹50 up (buys under ₹50 never back-fill; they stay in the penny section — decided 2026-10-08, before the
+  first stored v3.2 report, so the method stays `report_v3.2`) by the existing ranking (verified funda first → `diversifiedPickScore` → listed Other-buys
   rank → ticker). No duplicates. Each item carries `source` (`top10` | `other_buys` | `buy_set`) and
-  `source_label` ("from Other buys ₹1000+ (#1)", "from the full buy set (under ₹50)", …).
+  `source_label` ("from Other buys ₹1000+ (#1)", "from the full buy set (under ₹1000, over the per-sector cap)", …).
 - **`sections.breakout_watch`** (always present in v3.2, may be empty with a note) — near-misses only: verdicts
   that would be buys except resistance under entry + 1R caps T1 (`rr_below_1r`, reason "Resistance at ₹X caps…"),
   close ₹50+. Trigger = the nearest swing high / 20- / 50-day high above the close that, once cleared by a daily
@@ -215,7 +216,7 @@ own shape (P1.8c–f) and the UI treats missing sections as absent (no card, not
   breakout watch with triggers, headline). `--inputs` accepts the `{report, inputs}` file it writes.
 
 **Tests.** Lib: P1.8f stored v3.1 re-verifies, no v3.2 sections; P4.1 ₹1000+ buy → Other buys + deep dive
-(synthetic, Top 10 empty); P4.2 back-fill order / no duplicates / 2 per sector; P4.3 breakout watch never
+(synthetic, Top 10 empty); P4.2 back-fill order / no duplicates / 2 per sector; P4.2b penny buys never back-fill; P4.3 breakout watch never
 buy-labelled, trigger > close, ranked, capped; P4.4 banned words (incl. "watch for breakout") + banner +
 determinism. HTTP: P4.0 pre-3.2 report has the new sections absent; P4.1h–P4.4h on v3.2 reports.
 Banned list (`/\brecommendation\b/ /\btips?\b/ /\badvice\b/ /target price/ /guaranteed/ /sure-shot/ /will hit/
